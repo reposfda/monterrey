@@ -37,10 +37,7 @@ THIRDS_EVENTS = [
 ENABLE_CROSS_ATTACKING = True
 
 # ============= MÉTRICAS A DISCRIMINAR =============
-# Métricas generales (para discriminación por columnas)
 METRICS_TO_SPLIT = ["obv_total_net", "shot_statsbomb_xg"]
-
-# Métricas SOLO para tercios (sin xG)
 METRICS_FOR_THIRDS = ["obv_total_net"]
 
 # ============= HELPERS =============
@@ -56,6 +53,27 @@ def _coerce_literal(x):
                 except Exception:
                     return x
     return x
+
+def extract_x_y_from_location(location_val):
+    """
+    Extrae coordenadas (x, y) desde columna 'location'.
+    Formato esperado: [61.0, 40.1] o "[61.0, 40.1]"
+    Retorna: (x, y) o (None, None)
+    """
+    if pd.isna(location_val):
+        return None, None
+    
+    # Parsear si es string
+    loc = _coerce_literal(location_val)
+    
+    # Debe ser lista/tupla con al menos 2 elementos
+    if isinstance(loc, (list, tuple)) and len(loc) >= 2:
+        try:
+            return float(loc[0]), float(loc[1])
+        except (ValueError, TypeError):
+            return None, None
+    
+    return None, None
 
 def get_value_from_column(val):
     """Extrae valor de columnas que pueden ser dict o string."""
@@ -186,14 +204,41 @@ def minutes_played_in_match(df_match, player_id, xi_players):
             return int(round(max(0.0, off - on)))
     return 0
 
+def infer_position_from_events(df_match, player_id):
+    """
+    Infiere la posición más frecuente de un jugador en sus eventos del partido.
+    Útil para suplentes que no están en el XI.
+    """
+    ids = get_player_id_series(df_match)
+    player_events = df_match.loc[ids == player_id]
+    
+    if player_events.empty or "position" not in player_events.columns:
+        return None
+    
+    pos_vals = player_events["position"].apply(get_position_str).dropna()
+    if pos_vals.empty:
+        return None
+    
+    return pos_vals.value_counts().idxmax()
+
 # ============= HELPERS PARA TERCIOS =============
 def infer_pitch_dimensions(df: pd.DataFrame) -> tuple:
     """
     Infiere dimensiones de la cancha (length, width) desde los datos.
     StatsBomb usa 120x80 por defecto.
+    MODIFICADO: Ahora usa la columna 'location' en lugar de 'x' e 'y'.
     """
+    # Extraer coordenadas desde 'location'
+    if "location" not in df.columns:
+        print("⚠️ Columna 'location' no encontrada, usando dimensiones por defecto")
+        return 120.0, 80.0
+    
+    coords = df["location"].apply(extract_x_y_from_location)
+    x_vals = coords.apply(lambda c: c[0])
+    y_vals = coords.apply(lambda c: c[1])
+    
     # Ancho (Y)
-    y = pd.to_numeric(df.get("y", np.nan), errors="coerce")
+    y = pd.to_numeric(y_vals, errors="coerce")
     if not y.notna().any():
         width = 80.0
     else:
@@ -205,8 +250,8 @@ def infer_pitch_dimensions(df: pd.DataFrame) -> tuple:
         else:
             width = float(min(120.0, max(80.0, y.dropna().max())))
     
-    # Largo (X) - StatsBomb siempre usa 120
-    x = pd.to_numeric(df.get("x", np.nan), errors="coerce")
+    # Largo (X)
+    x = pd.to_numeric(x_vals, errors="coerce")
     if not x.notna().any():
         length = 120.0
     else:
@@ -246,7 +291,30 @@ df["type"] = df["type"].astype(str)
 df["_player_id"] = get_player_id_series(df)
 df["_player_name"] = get_player_name_series(df)
 
-print(f"Total de eventos cargados: {len(df):,}")
+# ============= EXTRAER COORDENADAS X, Y DESDE 'location' =============
+print("\n📍 Extrayendo coordenadas desde columna 'location'...")
+
+if "location" in df.columns:
+    # Extraer x e y desde location
+    coords = df["location"].apply(extract_x_y_from_location)
+    df["x"] = coords.apply(lambda c: c[0])
+    df["y"] = coords.apply(lambda c: c[1])
+    
+    # Estadísticas
+    x_count = df["x"].notna().sum()
+    y_count = df["y"].notna().sum()
+    print(f"  ✓ Coordenadas X extraídas: {x_count:,} eventos ({x_count/len(df)*100:.1f}%)")
+    print(f"  ✓ Coordenadas Y extraídas: {y_count:,} eventos ({y_count/len(df)*100:.1f}%)")
+else:
+    print("  ⚠️ Columna 'location' no encontrada")
+    # Verificar si ya existen x, y
+    if "x" in df.columns and "y" in df.columns:
+        print("  ✓ Usando columnas 'x' e 'y' existentes")
+    else:
+        print("  ❌ ERROR: No se encontraron ni 'location' ni columnas 'x', 'y'")
+        print("  El análisis por tercios no estará disponible")
+
+print(f"\nTotal de eventos cargados: {len(df):,}")
 
 # ============= 1) IDENTIFICAR JUGADORES =============
 print("\nIdentificando jugadores...")
@@ -291,8 +359,8 @@ if "team" in df.columns:
 
 print(f"Jugadores únicos identificados: {len(player_info):,}")
 
-# ============= 2) CALCULAR MINUTOS POR PARTIDO =============
-print("\nCalculando minutos jugados por partido...")
+# ============= 2) CALCULAR MINUTOS POR PARTIDO CON POSICIÓN =============
+print("\nCalculando minutos jugados por partido (con tracking de posición)...")
 
 minutes_rows = []
 match_count = 0
@@ -303,7 +371,7 @@ for mid, g in df.groupby("match_id", sort=False):
         print(f"  Procesando partido {match_count}...")
     
     xi_players = lineup_players_from_match(g)
-    season = g["season"].iloc[0] if "season" in g.columns else None
+    season_match = g["season"].iloc[0] if "season" in g.columns else None
     
     participants = set(xi_players.keys())
     
@@ -323,29 +391,33 @@ for mid, g in df.groupby("match_id", sort=False):
         mins = minutes_played_in_match(g, int(pid), xi_players)
         if mins > 0:
             is_starter = pid in xi_players
-            position = xi_players[pid]['position'] if pid in xi_players else None
-            team = xi_players[pid]['team'] if pid in xi_players else None
             
-            if not team and "team" in g.columns:
-                player_events = g.loc[get_player_id_series(g) == pid]
-                if not player_events.empty:
-                    team = get_team_name(player_events["team"].iloc[0])
+            if pid in xi_players:
+                position_match = xi_players[pid]['position']
+                team_match = xi_players[pid]['team']
+            else:
+                position_match = infer_position_from_events(g, int(pid))
+                team_match = None
+                if "team" in g.columns:
+                    player_events = g.loc[get_player_id_series(g) == pid]
+                    if not player_events.empty:
+                        team_match = get_team_name(player_events["team"].iloc[0])
             
             minutes_rows.append({
                 "player_id": int(pid),
                 "match_id": mid,
-                "season": season,
+                "season": season_match,
                 "minutes": int(mins),
                 "starter": is_starter,
-                "position": position,
-                "team": team
+                "position_match": position_match,
+                "team": team_match
             })
 
 minutes_df = pd.DataFrame(minutes_rows)
 print(f"Total de apariciones jugador-partido: {len(minutes_df):,}")
 
-# ============= 3) RESUMEN DE MINUTOS =============
-print("\nGenerando resumen de minutos...")
+# ============= 3) RESUMEN DE MINUTOS CON POSICIONES =============
+print("\nGenerando resumen de minutos (con análisis de posiciones)...")
 
 player_minutes_summary = minutes_df.groupby("player_id").agg({
     "minutes": "sum",
@@ -356,15 +428,55 @@ player_minutes_summary = minutes_df.groupby("player_id").agg({
 
 player_minutes_summary.columns = ["player_id", "total_minutes", "matches_played", "times_starter", "seasons"]
 
+position_minutes = (
+    minutes_df
+    .dropna(subset=["position_match"])
+    .groupby(["player_id", "position_match"], as_index=False)["minutes"]
+    .sum()
+    .rename(columns={"minutes": "minutes_in_position"})
+)
+
+primary_position = (
+    position_minutes
+    .sort_values("minutes_in_position", ascending=False)
+    .groupby("player_id")
+    .first()
+    .reset_index()[["player_id", "position_match", "minutes_in_position"]]
+    .rename(columns={
+        "position_match": "primary_position",
+        "minutes_in_position": "minutes_primary_position"
+    })
+)
+
+player_minutes_summary = player_minutes_summary.merge(primary_position, on="player_id", how="left")
+
+player_minutes_summary["primary_position_share"] = (
+    player_minutes_summary["minutes_primary_position"] / player_minutes_summary["total_minutes"]
+)
+
 player_minutes_summary["player_name"] = player_minutes_summary["player_id"].map(
     lambda pid: player_info.get(pid, {}).get('name', f"player_{pid}")
 )
-player_minutes_summary["positions"] = player_minutes_summary["player_id"].map(
+player_minutes_summary["all_positions"] = player_minutes_summary["player_id"].map(
     lambda pid: ", ".join(sorted(player_info.get(pid, {}).get('positions', set()))) or None
 )
 player_minutes_summary["teams"] = player_minutes_summary["player_id"].map(
     lambda pid: ", ".join(sorted(player_info.get(pid, {}).get('teams', set()))) or None
 )
+
+player_minutes_summary = player_minutes_summary[[
+    "player_id", "player_name", "primary_position", "all_positions", "teams",
+    "total_minutes", "minutes_primary_position", "primary_position_share",
+    "matches_played", "times_starter", "seasons"
+]]
+
+print(f"\nEstadísticas de posiciones:")
+print(f"  Jugadores con posición principal identificada: {player_minutes_summary['primary_position'].notna().sum()}")
+print(f"  Posición principal promedio (% minutos): {player_minutes_summary['primary_position_share'].mean():.1%}")
+
+if player_minutes_summary["primary_position"].notna().any():
+    print(f"\nDistribución de posiciones principales (top 10):")
+    print(player_minutes_summary["primary_position"].value_counts().head(10))
 
 # ============= 4) CONVERTIR BOOLEANS Y PREPARAR MÉTRICAS =============
 print("\nPreparando métricas numéricas...")
@@ -386,7 +498,7 @@ num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
 drop_cols = {
     "_player_id", "player_id", "team_id", "match_id", "possession_team_id",
-    "possession", "period", "second", "index", "id", "minute", "x", "y"
+    "possession", "period", "second", "index", "id", "minute", "x", "y", "z"
 }
 num_cols = [c for c in num_cols if c not in drop_cols]
 
@@ -397,7 +509,6 @@ df["pid"] = get_player_id_series(df).astype("Int64")
 all_player_ids = set(player_info.keys())
 df_all = df[df["pid"].isin(all_player_ids)].copy()
 
-# Determinar métricas a discriminar (para columnas)
 if METRICS_TO_SPLIT is None:
     metrics_to_discriminate = num_cols.copy()
 else:
@@ -460,143 +571,137 @@ if ENABLE_THIRDS_ANALYSIS:
     print("CREANDO MÉTRICAS DISCRIMINADAS POR TERCIOS DE CANCHA")
     print("="*70)
     
-    # Inferir dimensiones
-    pitch_length, pitch_width = infer_pitch_dimensions(df_all)
-    print(f"Dimensiones inferidas: {pitch_length}m x {pitch_width}m")
-    
-    # Extraer coordenada X de inicio
-    df_all["x_start"] = pd.to_numeric(df_all.get("x", np.nan), errors="coerce")
-    
-    # Determinar tercio de inicio
-    df_all["third_start"] = df_all["x_start"].apply(lambda x: get_third_from_x(x, pitch_length))
-    
-    print(f"Eventos con tercio identificado: {df_all['third_start'].notna().sum():,}")
-    
-    # Usar METRICS_FOR_THIRDS (solo OBV, sin xG)
-    metrics_for_thirds = [c for c in METRICS_FOR_THIRDS if c in num_cols]
-    print(f"Métricas para análisis de tercios: {metrics_for_thirds}")
-    
-    # Procesar cada tipo de evento por tercio
-    for event_type in THIRDS_EVENTS:
-        print(f"\n--- Procesando {event_type} por tercios ---")
+    # Verificar que tengamos coordenada X
+    if "x" not in df_all.columns or df_all["x"].isna().all():
+        print("⚠️ No hay coordenadas X disponibles. Saltando análisis por tercios.")
+    else:
+        pitch_length, pitch_width = infer_pitch_dimensions(df_all)
+        print(f"Dimensiones inferidas: {pitch_length}m x {pitch_width}m")
         
-        df_event = df_all[df_all["type"] == event_type].copy()
+        df_all["x_start"] = pd.to_numeric(df_all["x"], errors="coerce")
+        df_all["third_start"] = df_all["x_start"].apply(lambda x: get_third_from_x(x, pitch_length))
         
-        if df_event.empty:
-            print(f"  ⚠️ No hay eventos de tipo {event_type}")
-            continue
+        print(f"Eventos con tercio identificado: {df_all['third_start'].notna().sum():,}")
         
-        # Procesar cada tercio
-        for third in ["defensive", "middle", "attacking"]:
-            df_third = df_event[df_event["third_start"] == third].copy()
+        metrics_for_thirds = [c for c in METRICS_FOR_THIRDS if c in num_cols]
+        print(f"Métricas para análisis de tercios: {metrics_for_thirds}")
+        
+        for event_type in THIRDS_EVENTS:
+            print(f"\n--- Procesando {event_type} por tercios ---")
             
-            if df_third.empty:
+            df_event = df_all[df_all["type"] == event_type].copy()
+            
+            if df_event.empty:
+                print(f"  ⚠️ No hay eventos de tipo {event_type}")
                 continue
             
-            # Usar metrics_for_thirds
-            third_sums = df_third.groupby("pid")[metrics_for_thirds].sum(min_count=1).reset_index()
-            third_sums = third_sums.rename(columns={"pid": "player_id"})
+            for third in ["defensive", "middle", "attacking"]:
+                df_third = df_event[df_event["third_start"] == third].copy()
+                
+                if df_third.empty:
+                    continue
+                
+                third_sums = df_third.groupby("pid")[metrics_for_thirds].sum(min_count=1).reset_index()
+                third_sums = third_sums.rename(columns={"pid": "player_id"})
+                
+                event_name = event_type.lower().replace(" ", "_")
+                suffix = f"third_{third}_{event_name}"
+                
+                rename_dict = {col: f"{col}_{suffix}" for col in metrics_for_thirds}
+                third_sums = third_sums.rename(columns=rename_dict)
+                
+                all_discriminated_dfs[suffix] = third_sums
+                
+                discrimination_stats.append({
+                    "discrimination_type": "third",
+                    "column": "third",
+                    "value": f"{third}_{event_name}",
+                    "suffix": suffix,
+                    "total_events": len(df_third),
+                    "unique_players": third_sums["player_id"].nunique()
+                })
+                
+                print(f"  ✓ {third}: {len(df_third):,} eventos, {third_sums['player_id'].nunique()} jugadores")
+        
+        # ============= 5B-SPECIAL) CROSS EN ÚLTIMO TERCIO (OPEN PLAY) =============
+        if ENABLE_CROSS_ATTACKING:
+            print("\n--- Procesando Pass Cross en último tercio (open play) ---")
+            
+            df_cross = df_all[df_all["type"] == "Pass"].copy()
+            
+            if "pass_cross" in df_cross.columns:
+                df_cross["_pass_cross_bool"] = df_cross["pass_cross"].apply(
+                    lambda x: str(x).lower() in ["true", "1", "1.0"] if pd.notna(x) else False
+                )
+                df_cross = df_cross[df_cross["_pass_cross_bool"] == True]
+            
+            df_cross = df_cross[df_cross["third_start"] == "attacking"]
+            
+            if "play_pattern" in df_cross.columns:
+                df_cross["_play_pattern_clean"] = df_cross["play_pattern"].apply(get_value_from_column)
+                df_cross = df_cross[df_cross["_play_pattern_clean"] == "Regular Play"]
+            
+            if not df_cross.empty:
+                cross_sums = df_cross.groupby("pid")[metrics_for_thirds].sum(min_count=1).reset_index()
+                cross_sums = cross_sums.rename(columns={"pid": "player_id"})
+                
+                suffix = "third_attacking_pass_cross_openplay"
+                rename_dict = {col: f"{col}_{suffix}" for col in metrics_for_thirds}
+                cross_sums = cross_sums.rename(columns=rename_dict)
+                
+                all_discriminated_dfs[suffix] = cross_sums
+                
+                discrimination_stats.append({
+                    "discrimination_type": "third_special",
+                    "column": "cross_attacking",
+                    "value": "pass_cross_openplay",
+                    "suffix": suffix,
+                    "total_events": len(df_cross),
+                    "unique_players": cross_sums["player_id"].nunique()
+                })
+                
+                print(f"  ✓ Cross attacking (open play): {len(df_cross):,} eventos, {cross_sums['player_id'].nunique()} jugadores")
+            else:
+                print(f"  ⚠️ No se encontraron cross en último tercio (open play)")
+        
+        # ============= 5B-COUNT) CONTAR EVENTOS POR TERCIO =============
+        print("\n" + "="*70)
+        print("CONTANDO EVENTOS POR TERCIO")
+        print("="*70)
+        
+        event_counts_by_third = []
+        
+        for event_type in THIRDS_EVENTS:
+            df_event = df_all[df_all["type"] == event_type].copy()
+            
+            if df_event.empty:
+                continue
             
             event_name = event_type.lower().replace(" ", "_")
-            suffix = f"third_{third}_{event_name}"
             
-            rename_dict = {col: f"{col}_{suffix}" for col in metrics_for_thirds}
-            third_sums = third_sums.rename(columns=rename_dict)
+            counts = df_event.groupby(["pid", "third_start"]).size().reset_index(name="count")
             
-            all_discriminated_dfs[suffix] = third_sums
-            
-            discrimination_stats.append({
-                "discrimination_type": "third",
-                "column": "third",
-                "value": f"{third}_{event_name}",
-                "suffix": suffix,
-                "total_events": len(df_third),
-                "unique_players": third_sums["player_id"].nunique()
-            })
-            
-            print(f"  ✓ {third}: {len(df_third):,} eventos, {third_sums['player_id'].nunique()} jugadores")
-    
-    # ============= 5B-SPECIAL) CROSS EN ÚLTIMO TERCIO (OPEN PLAY) =============
-    if ENABLE_CROSS_ATTACKING:
-        print("\n--- Procesando Pass Cross en último tercio (open play) ---")
+            for third in ["defensive", "middle", "attacking"]:
+                counts_third = counts[counts["third_start"] == third].copy()
+                
+                if counts_third.empty:
+                    continue
+                
+                col_name = f"n_events_third_{third}_{event_name}"
+                counts_third = counts_third.rename(columns={"pid": "player_id", "count": col_name})
+                counts_third = counts_third[["player_id", col_name]]
+                
+                event_counts_by_third.append(counts_third)
+                
+                total_count = counts_third[col_name].sum()
+                print(f"  ✓ Contados {event_name} en {third}: {total_count:,} eventos totales")
         
-        df_cross = df_all[df_all["type"] == "Pass"].copy()
-        
-        if "pass_cross" in df_cross.columns:
-            df_cross["_pass_cross_bool"] = df_cross["pass_cross"].apply(
-                lambda x: str(x).lower() in ["true", "1", "1.0"] if pd.notna(x) else False
-            )
-            df_cross = df_cross[df_cross["_pass_cross_bool"] == True]
-        
-        df_cross = df_cross[df_cross["third_start"] == "attacking"]
-        
-        if "play_pattern" in df_cross.columns:
-            df_cross["_play_pattern_clean"] = df_cross["play_pattern"].apply(get_value_from_column)
-            df_cross = df_cross[df_cross["_play_pattern_clean"] == "Regular Play"]
-        
-        if not df_cross.empty:
-            # Usar metrics_for_thirds
-            cross_sums = df_cross.groupby("pid")[metrics_for_thirds].sum(min_count=1).reset_index()
-            cross_sums = cross_sums.rename(columns={"pid": "player_id"})
-            
-            suffix = "third_attacking_pass_cross_openplay"
-            rename_dict = {col: f"{col}_{suffix}" for col in metrics_for_thirds}
-            cross_sums = cross_sums.rename(columns=rename_dict)
-            
-            all_discriminated_dfs[suffix] = cross_sums
-            
-            discrimination_stats.append({
-                "discrimination_type": "third_special",
-                "column": "cross_attacking",
-                "value": "pass_cross_openplay",
-                "suffix": suffix,
-                "total_events": len(df_cross),
-                "unique_players": cross_sums["player_id"].nunique()
-            })
-            
-            print(f"  ✓ Cross attacking (open play): {len(df_cross):,} eventos, {cross_sums['player_id'].nunique()} jugadores")
-        else:
-            print(f"  ⚠️ No se encontraron cross en último tercio (open play)")
-    
-    # ============= 5B-COUNT) CONTAR EVENTOS POR TERCIO =============
-    print("\n" + "="*70)
-    print("CONTANDO EVENTOS POR TERCIO")
-    print("="*70)
-    
-    event_counts_by_third = []
-    
-    for event_type in THIRDS_EVENTS:
-        df_event = df_all[df_all["type"] == event_type].copy()
-        
-        if df_event.empty:
-            continue
-        
-        event_name = event_type.lower().replace(" ", "_")
-        
-        counts = df_event.groupby(["pid", "third_start"]).size().reset_index(name="count")
-        
-        for third in ["defensive", "middle", "attacking"]:
-            counts_third = counts[counts["third_start"] == third].copy()
-            
-            if counts_third.empty:
-                continue
-            
-            col_name = f"n_events_third_{third}_{event_name}"
-            counts_third = counts_third.rename(columns={"pid": "player_id", "count": col_name})
-            counts_third = counts_third[["player_id", col_name]]
-            
-            event_counts_by_third.append(counts_third)
-            
-            total_count = counts_third[col_name].sum()
-            print(f"  ✓ Contados {event_name} en {third}: {total_count:,} eventos totales")
-    
-    # Contar cross en último tercio
-    if ENABLE_CROSS_ATTACKING and 'df_cross' in locals() and not df_cross.empty:
-        cross_counts = df_cross.groupby("pid").size().reset_index(name="n_events_third_attacking_pass_cross_openplay")
-        cross_counts = cross_counts.rename(columns={"pid": "player_id"})
-        event_counts_by_third.append(cross_counts)
-        total_cross = cross_counts['n_events_third_attacking_pass_cross_openplay'].sum()
-        print(f"  ✓ Contados cross attacking openplay: {total_cross:,} eventos totales")
+        if ENABLE_CROSS_ATTACKING and 'df_cross' in locals() and not df_cross.empty:
+            cross_counts = df_cross.groupby("pid").size().reset_index(name="n_events_third_attacking_pass_cross_openplay")
+            cross_counts = cross_counts.rename(columns={"pid": "player_id"})
+            event_counts_by_third.append(cross_counts)
+            total_cross = cross_counts['n_events_third_attacking_pass_cross_openplay'].sum()
+            print(f"  ✓ Contados cross attacking openplay: {total_cross:,} eventos totales")
 
 # ============= 5C) SUMAR EVENTOS TOTALES =============
 print("\n" + "="*70)
@@ -608,8 +713,9 @@ player_sums = player_sums.rename(columns={"pid": "player_id"})
 
 player_sums = player_sums.merge(
     player_minutes_summary[[
-        "player_id", "total_minutes", "matches_played", "times_starter",
-        "player_name", "positions", "teams"
+        "player_id", "player_name", "primary_position", "all_positions", "teams",
+        "total_minutes", "minutes_primary_position", "primary_position_share",
+        "matches_played", "times_starter"
     ]], 
     on="player_id", 
     how="left"
@@ -624,13 +730,11 @@ print("="*70)
 
 discriminated_cols = []
 
-# Merge de métricas discriminadas
 for suffix, disc_df in all_discriminated_dfs.items():
     player_sums = player_sums.merge(disc_df, on="player_id", how="left")
     new_cols = [c for c in disc_df.columns if c != "player_id"]
     discriminated_cols.extend(new_cols)
 
-# Merge de contadores de eventos por tercio
 if ENABLE_THIRDS_ANALYSIS and 'event_counts_by_third' in locals() and event_counts_by_third:
     print("\nIntegrando contadores de eventos por tercio...")
     
@@ -647,7 +751,6 @@ print(f"\nTotal métricas discriminadas: {len(discriminated_cols)}")
 print(f"  - Métricas de valores (sumas): {len([c for c in discriminated_cols if not c.startswith('n_events_')])}")
 print(f"  - Contadores de eventos: {len([c for c in discriminated_cols if c.startswith('n_events_')])}")
 
-# Rellenar NaN con 0
 player_sums[discriminated_cols] = player_sums[discriminated_cols].fillna(0)
 
 # ============= 6) NORMALIZAR POR 90 MINUTOS =============
@@ -655,7 +758,6 @@ print("\n" + "="*70)
 print("NORMALIZANDO POR 90 MINUTOS")
 print("="*70)
 
-# Métricas totales
 for c in num_cols:
     player_sums[f"{c}_per90"] = np.where(
         player_sums["total_minutes"] > 0, 
@@ -663,7 +765,6 @@ for c in num_cols:
         np.nan
     )
 
-# Métricas discriminadas (incluye contadores)
 for c in discriminated_cols:
     player_sums[f"{c}_per90"] = np.where(
         player_sums["total_minutes"] > 0, 
@@ -678,7 +779,11 @@ print(f"✓ Métricas totales per90: {len(total_per90_cols)}")
 print(f"✓ Métricas discriminadas per90: {len(discriminated_per90_cols)}")
 
 # ============= 7) PREPARAR DATAFRAME FINAL =============
-base_cols = ["player_id", "player_name", "positions", "teams", "total_minutes", "matches_played", "times_starter"]
+base_cols = [
+    "player_id", "player_name", "primary_position", "all_positions", "teams",
+    "total_minutes", "minutes_primary_position", "primary_position_share",
+    "matches_played", "times_starter"
+]
 
 final_cols = (base_cols + 
               num_cols + 
@@ -689,7 +794,7 @@ final_cols = (base_cols +
 final_df = player_sums[final_cols].copy()
 final_df = final_df.sort_values("total_minutes", ascending=False)
 
-# ============= 8) EXPORTS =============
+# ============= 8) EXPORTS CON TEMPORADA EN NOMBRE =============
 print("\n" + "="*70)
 print("EXPORTANDO RESULTADOS")
 print("="*70)
@@ -698,49 +803,55 @@ import os
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # 1. Completo
-output_complete = os.path.join(OUTPUT_DIR, "all_players_complete.csv")
+output_complete = os.path.join(OUTPUT_DIR, f"all_players_complete_{season}.csv")
 final_df.to_csv(output_complete, index=False)
 print(f"✓ Completo: {output_complete}")
 
 # 2. Solo per90 (totales + discriminadas)
-output_per90_all = os.path.join(OUTPUT_DIR, "all_players_per90_all.csv")
+output_per90_all = os.path.join(OUTPUT_DIR, f"all_players_per90_all_{season}.csv")
 per90_all_cols = base_cols + total_per90_cols + discriminated_per90_cols
 final_df[per90_all_cols].to_csv(output_per90_all, index=False)
 print(f"✓ Per90 (todas): {output_per90_all}")
 
 # 3. Solo discriminadas per90
-output_per90_disc = os.path.join(OUTPUT_DIR, "all_players_per90_discriminated.csv")
+output_per90_disc = os.path.join(OUTPUT_DIR, f"all_players_per90_discriminated_{season}.csv")
 disc_per90_cols = base_cols + discriminated_per90_cols
 final_df[disc_per90_cols].to_csv(output_per90_disc, index=False)
 print(f"✓ Per90 (solo discriminadas): {output_per90_disc}")
 
 # 4. Estadísticas de discriminaciones
 disc_stats_df = pd.DataFrame(discrimination_stats).sort_values("total_events", ascending=False)
-output_stats = os.path.join(OUTPUT_DIR, "discrimination_statistics.csv")
+output_stats = os.path.join(OUTPUT_DIR, f"discrimination_statistics_{season}.csv")
 disc_stats_df.to_csv(output_stats, index=False)
 print(f"✓ Estadísticas: {output_stats}")
 
-# 5. Solo tercios per90 (métricas + contadores)
+# 5. Solo tercios per90
 if ENABLE_THIRDS_ANALYSIS:
     thirds_cols = [c for c in discriminated_per90_cols if "third_" in c]
     if thirds_cols:
-        output_thirds = os.path.join(OUTPUT_DIR, "all_players_thirds_per90.csv")
+        output_thirds = os.path.join(OUTPUT_DIR, f"all_players_thirds_per90_{season}.csv")
         final_df[base_cols + thirds_cols].to_csv(output_thirds, index=False)
         print(f"✓ Solo tercios per90: {output_thirds}")
-        print(f"   - Métricas de tercios (OBV): {len([c for c in thirds_cols if not 'n_events_' in c])}")
-        print(f"   - Contadores de tercios: {len([c for c in thirds_cols if 'n_events_' in c])}")
 
-# 6. Minutos por partido
-output_minutes = os.path.join(OUTPUT_DIR, "player_minutes_by_match.csv")
+# 6. Minutos por partido CON POSICIONES
+output_minutes = os.path.join(OUTPUT_DIR, f"player_minutes_by_match_{season}.csv")
 minutes_df.merge(
-    player_minutes_summary[["player_id", "player_name"]], 
+    player_minutes_summary[["player_id", "player_name", "primary_position"]], 
     on="player_id", how="left"
 ).to_csv(output_minutes, index=False)
-print(f"✓ Minutos: {output_minutes}")
+print(f"✓ Minutos por partido: {output_minutes}")
+
+# 7. Minutos por jugador y posición
+output_pos_minutes = os.path.join(OUTPUT_DIR, f"player_minutes_by_position_{season}.csv")
+position_minutes.merge(
+    player_minutes_summary[["player_id", "player_name", "total_minutes"]], 
+    on="player_id", how="left"
+).sort_values(["player_id", "minutes_in_position"], ascending=[True, False]).to_csv(output_pos_minutes, index=False)
+print(f"✓ Minutos por posición: {output_pos_minutes}")
 
 # ============= 9) RESUMEN FINAL =============
 print("\n" + "="*70)
-print("RESUMEN FINAL")
+print(f"RESUMEN FINAL - TEMPORADA {season}")
 print("="*70)
 print(f"Jugadores procesados: {len(final_df):,}")
 print(f"Partidos únicos: {df['match_id'].nunique():,}")
@@ -749,9 +860,16 @@ print(f"Métricas base: {len(num_cols)}")
 print(f"Columnas discriminadas: {len(COLUMNS_TO_DISCRIMINATE)}")
 if ENABLE_THIRDS_ANALYSIS:
     print(f"Eventos analizados por tercios: {len(THIRDS_EVENTS)}")
-    print(f"Métricas para tercios: {METRICS_FOR_THIRDS}")
 print(f"Métricas discriminadas generadas: {len(discriminated_cols)}")
 print(f"Total columnas finales: {len(final_df.columns):,}")
+
+print(f"\n📊 Análisis de posiciones:")
+print(f"  Jugadores con posición principal: {final_df['primary_position'].notna().sum()}")
+print(f"  Promedio de especialización (% en posición principal): {final_df['primary_position_share'].mean():.1%}")
+
+print(f"\nTop 10 posiciones principales más comunes:")
+if final_df["primary_position"].notna().any():
+    print(final_df["primary_position"].value_counts().head(10).to_string())
 
 print(f"\nTop 20 discriminaciones por eventos:")
 print(disc_stats_df.head(20)[["discrimination_type", "column", "value", "total_events", "unique_players"]].to_string(index=False))
@@ -761,20 +879,5 @@ if ENABLE_THIRDS_ANALYSIS:
     if not thirds_stats.empty:
         print(f"\nEstadísticas de tercios:")
         print(thirds_stats[["value", "total_events", "unique_players"]].to_string(index=False))
-
-print(f"\nEjemplos de columnas discriminadas generadas:")
-# Mostrar primero los contadores
-count_examples = [c for c in discriminated_per90_cols if 'n_events_' in c][:10]
-metric_examples = [c for c in discriminated_per90_cols if 'n_events_' not in c][:15]
-
-if count_examples:
-    print("\n  Contadores de eventos:")
-    for col in count_examples:
-        print(f"    - {col}")
-
-if metric_examples:
-    print("\n  Métricas (sumas de OBV/xG):")
-    for col in metric_examples:
-        print(f"    - {col}")
 
 print("="*70)
