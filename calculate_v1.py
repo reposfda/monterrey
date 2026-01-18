@@ -2,6 +2,11 @@
 import pandas as pd
 import numpy as np
 import json, ast
+import sys
+from datetime import datetime
+
+# Importar funciones de turnover
+from turnover_scoring import compute_player_turnovers
 
 # ============= CONFIG =============
 PATH = "data/events_2024_2025.csv"
@@ -9,6 +14,38 @@ season = PATH.split('_', 1)[1].replace('.csv', '')
 
 ASSUME_END_CAP = 120
 OUTPUT_DIR = "./outputs"
+
+# ============= LOGGING SETUP =============
+class Logger:
+    """Clase para escribir simultáneamente en consola y archivo"""
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.log = open(filename, 'w', encoding='utf-8')
+        
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+        
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+        
+    def close(self):
+        self.log.close()
+
+# Crear directorio de outputs si no existe
+import os
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Configurar logging
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+log_filename = os.path.join(OUTPUT_DIR, f"analysis_log_{season}_{timestamp}.txt")
+sys.stdout = Logger(log_filename)
+
+print("="*70)
+print(f"ANÁLISIS DE EVENTOS - TEMPORADA {season}")
+print(f"Inicio: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print("="*70)
 
 # ============= COLUMNAS A DISCRIMINAR =============
 COLUMNS_TO_DISCRIMINATE = [
@@ -35,6 +72,11 @@ THIRDS_EVENTS = [
 ]
 
 ENABLE_CROSS_ATTACKING = True
+
+# ============= CONFIG TURNOVERS =============
+ENABLE_TURNOVER_ANALYSIS = True
+TURNOVER_OPEN_PLAY_ONLY = True
+TURNOVER_EXCLUDE_RESTARTS = True
 
 # ============= MÉTRICAS A DISCRIMINAR =============
 METRICS_TO_SPLIT = ["obv_total_net", "shot_statsbomb_xg"]
@@ -314,6 +356,35 @@ else:
         print("  ❌ ERROR: No se encontraron ni 'location' ni columnas 'x', 'y'")
         print("  El análisis por tercios no estará disponible")
 
+# ============= EXTRAER COORDENADAS FINALES (PASS Y CARRY) =============
+print("\n📍 Extrayendo coordenadas finales (pass_end_location, carry_end_location)...")
+
+# Pass end location
+if "pass_end_location" in df.columns:
+    coords_pass_end = df["pass_end_location"].apply(extract_x_y_from_location)
+    df["x_pass_end"] = coords_pass_end.apply(lambda c: c[0])
+    df["y_pass_end"] = coords_pass_end.apply(lambda c: c[1])
+    
+    pass_end_count = df["x_pass_end"].notna().sum()
+    print(f"  ✓ Pass end X extraídas: {pass_end_count:,} eventos ({pass_end_count/len(df)*100:.1f}%)")
+else:
+    print("  ⚠️ Columna 'pass_end_location' no encontrada")
+    df["x_pass_end"] = None
+    df["y_pass_end"] = None
+
+# Carry end location
+if "carry_end_location" in df.columns:
+    coords_carry_end = df["carry_end_location"].apply(extract_x_y_from_location)
+    df["x_carry_end"] = coords_carry_end.apply(lambda c: c[0])
+    df["y_carry_end"] = coords_carry_end.apply(lambda c: c[1])
+    
+    carry_end_count = df["x_carry_end"].notna().sum()
+    print(f"  ✓ Carry end X extraídas: {carry_end_count:,} eventos ({carry_end_count/len(df)*100:.1f}%)")
+else:
+    print("  ⚠️ Columna 'carry_end_location' no encontrada")
+    df["x_carry_end"] = None
+    df["y_carry_end"] = None
+
 print(f"\nTotal de eventos cargados: {len(df):,}")
 
 # ============= 1) IDENTIFICAR JUGADORES =============
@@ -358,6 +429,91 @@ if "team" in df.columns:
                 player_info[pid]['teams'].add(team)
 
 print(f"Jugadores únicos identificados: {len(player_info):,}")
+
+# ============= 1B) ANALIZAR TURNOVERS =============
+if ENABLE_TURNOVER_ANALYSIS:
+    print("\n" + "="*70)
+    print("ANALIZANDO TURNOVERS")
+    print("="*70)
+    
+    try:
+        # Preparar DataFrame para turnovers
+        # Necesitamos asegurar que team y possession_team estén como strings limpias
+        df_turnovers = df.copy()
+        
+        if "team" in df_turnovers.columns:
+            df_turnovers["team"] = df_turnovers["team"].apply(get_team_name)
+        
+        if "possession_team" in df_turnovers.columns:
+            df_turnovers["possession_team"] = df_turnovers["possession_team"].apply(get_team_name)
+        
+        # Asegurar que player_id esté disponible
+        if "player_id" not in df_turnovers.columns:
+            df_turnovers["player_id"] = df_turnovers["_player_id"]
+        
+        print(f"Calculando turnovers con configuración:")
+        print(f"  - Open play only: {TURNOVER_OPEN_PLAY_ONLY}")
+        print(f"  - Exclude restarts: {TURNOVER_EXCLUDE_RESTARTS}")
+        
+        turnovers_df = compute_player_turnovers(
+            df_turnovers,
+            open_play_only=TURNOVER_OPEN_PLAY_ONLY,
+            exclude_restart_patterns=TURNOVER_EXCLUDE_RESTARTS
+        )
+        
+        print(f"\n✓ Turnovers detectados: {len(turnovers_df):,}")
+        
+        if not turnovers_df.empty:
+            # Estadísticas generales
+            print(f"\nEstadísticas de turnovers:")
+            print(f"  - Jugadores únicos con turnovers: {turnovers_df['player_id'].nunique():,}")
+            print(f"  - Partidos con turnovers: {turnovers_df['match_id'].nunique():,}")
+            
+            # Top tipos de turnovers
+            if "turnover_how" in turnovers_df.columns:
+                print(f"\nTop 10 tipos de turnovers:")
+                print(turnovers_df["turnover_how"].value_counts().head(10))
+            
+            # Agregar turnovers por jugador
+            turnover_counts = (
+                turnovers_df
+                .groupby("player_id")
+                .size()
+                .reset_index(name="total_turnovers")
+            )
+            
+            # Agregar por tipo de turnover
+            if "turnover_how" in turnovers_df.columns:
+                turnover_by_type = (
+                    turnovers_df
+                    .groupby(["player_id", "turnover_how"])
+                    .size()
+                    .reset_index(name="count")
+                )
+                
+                # Pivot para tener columnas por tipo
+                turnover_pivot = turnover_by_type.pivot(
+                    index="player_id",
+                    columns="turnover_how",
+                    values="count"
+                ).fillna(0).reset_index()
+                
+                # Renombrar columnas
+                turnover_pivot.columns = [
+                    f"turnovers_{col.lower().replace(' ', '_').replace(':', '')}" if col != "player_id" else col
+                    for col in turnover_pivot.columns
+                ]
+                
+                # Merge con conteo total
+                turnover_counts = turnover_counts.merge(turnover_pivot, on="player_id", how="left")
+            
+            print(f"\n✓ Métricas de turnovers agregadas por jugador")
+            print(f"  - Columnas de turnovers generadas: {len([c for c in turnover_counts.columns if c.startswith('turnovers_')])}")
+            
+    except Exception as e:
+        print(f"\n❌ Error al calcular turnovers: {e}")
+        print("  Continuando sin análisis de turnovers...")
+        ENABLE_TURNOVER_ANALYSIS = False
 
 # ============= 2) CALCULAR MINUTOS POR PARTIDO CON POSICIÓN =============
 print("\nCalculando minutos jugados por partido (con tracking de posición)...")
@@ -515,6 +671,60 @@ else:
     metrics_to_discriminate = [c for c in METRICS_TO_SPLIT if c in num_cols]
 
 print(f"\nMétricas a discriminar (columnas): {metrics_to_discriminate}")
+
+# ============= 5-SPECIAL) CALCULAR PASS/CARRY INTO FINAL THIRD =============
+print("\n" + "="*70)
+print("CALCULANDO PASS Y CARRY INTO FINAL THIRD")
+print("="*70)
+
+into_final_third_metrics = []
+
+# Inferir dimensiones de la cancha
+pitch_length, pitch_width = infer_pitch_dimensions(df_all)
+print(f"Dimensiones de cancha: {pitch_length}m x {pitch_width}m")
+attacking_third_threshold = (2 * pitch_length) / 3.0
+print(f"Umbral tercio atacante: X >= {attacking_third_threshold:.1f}m")
+
+# Pass into final third
+if "x_pass_end" in df_all.columns and df_all["x_pass_end"].notna().any():
+    df_all["pass_into_final_third"] = (
+        (df_all["type"] == "Pass") & 
+        (df_all["x_pass_end"] >= attacking_third_threshold)
+    ).astype(int)
+    
+    pass_into_count = df_all["pass_into_final_third"].sum()
+    players_with_pass_into = (df_all.groupby("pid")["pass_into_final_third"].sum() > 0).sum()
+    
+    print(f"✓ pass_into_final_third: {pass_into_count:,} eventos")
+    print(f"  Jugadores con pases al tercio final: {players_with_pass_into:,}")
+    
+    into_final_third_metrics.append("pass_into_final_third")
+    num_cols.append("pass_into_final_third")
+else:
+    print("⚠️ No se puede calcular pass_into_final_third (falta x_pass_end)")
+
+# Carry into final third
+if "x_carry_end" in df_all.columns and df_all["x_carry_end"].notna().any():
+    df_all["carry_into_final_third"] = (
+        (df_all["type"] == "Carry") & 
+        (df_all["x_carry_end"] >= attacking_third_threshold)
+    ).astype(int)
+    
+    carry_into_count = df_all["carry_into_final_third"].sum()
+    players_with_carry_into = (df_all.groupby("pid")["carry_into_final_third"].sum() > 0).sum()
+    
+    print(f"✓ carry_into_final_third: {carry_into_count:,} eventos")
+    print(f"  Jugadores con carries al tercio final: {players_with_carry_into:,}")
+    
+    into_final_third_metrics.append("carry_into_final_third")
+    num_cols.append("carry_into_final_third")
+else:
+    print("⚠️ No se puede calcular carry_into_final_third (falta x_carry_end)")
+
+if into_final_third_metrics:
+    print(f"\n✓ Total métricas 'into final third' calculadas: {len(into_final_third_metrics)}")
+else:
+    print("\n⚠️ No se calcularon métricas 'into final third'")
 
 # ============= 5A) DISCRIMINAR POR CADA COLUMNA =============
 print("\n" + "="*70)
@@ -721,6 +931,23 @@ player_sums = player_sums.merge(
     how="left"
 )
 
+# ============= 5C-TURNOVERS) AGREGAR MÉTRICAS DE TURNOVERS =============
+if ENABLE_TURNOVER_ANALYSIS and 'turnover_counts' in locals():
+    print("\n" + "="*70)
+    print("INTEGRANDO MÉTRICAS DE TURNOVERS")
+    print("="*70)
+    
+    player_sums = player_sums.merge(turnover_counts, on="player_id", how="left")
+    
+    # Llenar NaN con 0 para jugadores sin turnovers
+    turnover_cols = [c for c in turnover_counts.columns if c != "player_id"]
+    player_sums[turnover_cols] = player_sums[turnover_cols].fillna(0)
+    
+    print(f"✓ Métricas de turnovers integradas: {len(turnover_cols)} columnas")
+    
+    # Agregar turnovers a num_cols para que se calculen per90
+    num_cols.extend(turnover_cols)
+
 print(f"Jugadores en player_sums: {len(player_sums):,}")
 
 # ============= 5D) MERGE DE TODAS LAS DISCRIMINACIONES =============
@@ -753,7 +980,46 @@ print(f"  - Contadores de eventos: {len([c for c in discriminated_cols if c.star
 
 player_sums[discriminated_cols] = player_sums[discriminated_cols].fillna(0)
 
-# ============= 6) NORMALIZAR POR 90 MINUTOS =============
+# ============= 6) CALCULAR PORCENTAJES (DESDE TOTALES) =============
+print("\n" + "="*70)
+print("CALCULANDO MÉTRICAS DE PORCENTAJE")
+print("="*70)
+
+percentage_metrics = []
+
+# Duel win percentage
+if "duel_won" in player_sums.columns and "duel_lost" in player_sums.columns:
+    player_sums["duel_win_pct"] = np.where(
+        (player_sums["duel_won"] + player_sums["duel_lost"]) > 0,
+        player_sums["duel_won"] / (player_sums["duel_won"] + player_sums["duel_lost"]),
+        np.nan
+    )
+    percentage_metrics.append("duel_win_pct")
+    print("✓ duel_win_pct")
+
+# Tackle success percentage
+if "duel_tackle" in player_sums.columns and "duel_tackle_lost" in player_sums.columns:
+    player_sums["tackle_success_pct"] = np.where(
+        (player_sums["duel_tackle"] + player_sums["duel_tackle_lost"]) > 0,
+        player_sums["duel_tackle"] / (player_sums["duel_tackle"] + player_sums["duel_tackle_lost"]),
+        np.nan
+    )
+    percentage_metrics.append("tackle_success_pct")
+    print("✓ tackle_success_pct")
+
+# Ball recovery success percentage
+if "ball_recovery_offensive" in player_sums.columns and "ball_recovery_recovery_failure" in player_sums.columns:
+    player_sums["ball_recovery_success_pct"] = np.where(
+        (player_sums["ball_recovery_offensive"] + player_sums["ball_recovery_recovery_failure"]) > 0,
+        player_sums["ball_recovery_offensive"] / (player_sums["ball_recovery_offensive"] + player_sums["ball_recovery_recovery_failure"]),
+        np.nan
+    )
+    percentage_metrics.append("ball_recovery_success_pct")
+    print("✓ ball_recovery_success_pct")
+
+print(f"\nTotal métricas de porcentaje calculadas: {len(percentage_metrics)}")
+
+# ============= 7) NORMALIZAR POR 90 MINUTOS =============
 print("\n" + "="*70)
 print("NORMALIZANDO POR 90 MINUTOS")
 print("="*70)
@@ -778,7 +1044,57 @@ discriminated_per90_cols = [f"{c}_per90" for c in discriminated_cols]
 print(f"✓ Métricas totales per90: {len(total_per90_cols)}")
 print(f"✓ Métricas discriminadas per90: {len(discriminated_per90_cols)}")
 
-# ============= 7) PREPARAR DATAFRAME FINAL =============
+if ENABLE_TURNOVER_ANALYSIS:
+    turnover_per90_cols = [c for c in total_per90_cols if 'turnover' in c]
+    print(f"✓ Métricas de turnovers per90: {len(turnover_per90_cols)}")
+
+# ============= 8) CALCULAR MÉTRICAS COMPUESTAS (DESDE PER90) =============
+print("\n" + "="*70)
+print("CALCULANDO MÉTRICAS COMPUESTAS")
+print("="*70)
+
+composite_metrics = []
+
+# Defensive actions lost per90
+required_defensive = ["dribbled_past_per90", "duel_tackle_lost_per90", "foul_committed_per90"]
+if all(c in player_sums.columns for c in required_defensive):
+    player_sums["defensive_actions_lost_per90"] = (
+        player_sums["dribbled_past_per90"].fillna(0)
+        + player_sums["duel_tackle_lost_per90"].fillna(0)
+        + player_sums["foul_committed_per90"].fillna(0)
+    )
+    composite_metrics.append("defensive_actions_lost_per90")
+    print("✓ defensive_actions_lost_per90")
+
+# Clearances total per90
+clearance_cols = [
+    "clearance_aerial_won_per90",
+    "clearance_head_per90", 
+    "clearance_left_foot_per90",
+    "clearance_right_foot_per90",
+    "clearance_other_per90"
+]
+available_clearances = [c for c in clearance_cols if c in player_sums.columns]
+if available_clearances:
+    player_sums["clearances_total_per90"] = sum(
+        player_sums[c].fillna(0) for c in available_clearances
+    )
+    composite_metrics.append("clearances_total_per90")
+    print(f"✓ clearances_total_per90 (from {len(available_clearances)} sources)")
+
+# Blocks total per90
+block_cols = ["block_deflection_per90", "block_save_block_per90"]
+available_blocks = [c for c in block_cols if c in player_sums.columns]
+if available_blocks:
+    player_sums["blocks_total_per90"] = sum(
+        player_sums[c].fillna(0) for c in available_blocks
+    )
+    composite_metrics.append("blocks_total_per90")
+    print(f"✓ blocks_total_per90 (from {len(available_blocks)} sources)")
+
+print(f"\nTotal métricas compuestas calculadas: {len(composite_metrics)}")
+
+# ============= 9) PREPARAR DATAFRAME FINAL =============
 base_cols = [
     "player_id", "player_name", "primary_position", "all_positions", "teams",
     "total_minutes", "minutes_primary_position", "primary_position_share",
@@ -787,20 +1103,19 @@ base_cols = [
 
 final_cols = (base_cols + 
               num_cols + 
+              percentage_metrics +
               discriminated_cols + 
               total_per90_cols + 
-              discriminated_per90_cols)
+              discriminated_per90_cols +
+              composite_metrics)
 
 final_df = player_sums[final_cols].copy()
 final_df = final_df.sort_values("total_minutes", ascending=False)
 
-# ============= 8) EXPORTS CON TEMPORADA EN NOMBRE =============
+# ============= 10) EXPORTS CON TEMPORADA EN NOMBRE =============
 print("\n" + "="*70)
 print("EXPORTANDO RESULTADOS")
 print("="*70)
-
-import os
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # 1. Completo
 output_complete = os.path.join(OUTPUT_DIR, f"all_players_complete_{season}.csv")
@@ -849,7 +1164,22 @@ position_minutes.merge(
 ).sort_values(["player_id", "minutes_in_position"], ascending=[True, False]).to_csv(output_pos_minutes, index=False)
 print(f"✓ Minutos por posición: {output_pos_minutes}")
 
-# ============= 9) RESUMEN FINAL =============
+# 8. Detalle de turnovers (si está habilitado)
+if ENABLE_TURNOVER_ANALYSIS and 'turnovers_df' in locals() and not turnovers_df.empty:
+    output_turnovers = os.path.join(OUTPUT_DIR, f"turnovers_detail_{season}.csv")
+    turnovers_df.to_csv(output_turnovers, index=False)
+    print(f"✓ Detalle de turnovers: {output_turnovers}")
+    
+    # 9. Solo métricas de turnovers per90
+    if 'turnover_per90_cols' in locals() and turnover_per90_cols:
+        output_turnovers_per90 = os.path.join(OUTPUT_DIR, f"all_players_turnovers_per90_{season}.csv")
+        final_df[base_cols + turnover_per90_cols].to_csv(output_turnovers_per90, index=False)
+        print(f"✓ Solo turnovers per90: {output_turnovers_per90}")
+
+# 10. Log del análisis
+print(f"✓ Log del análisis: {log_filename}")
+
+# ============= 11) RESUMEN FINAL =============
 print("\n" + "="*70)
 print(f"RESUMEN FINAL - TEMPORADA {season}")
 print("="*70)
@@ -860,12 +1190,28 @@ print(f"Métricas base: {len(num_cols)}")
 print(f"Columnas discriminadas: {len(COLUMNS_TO_DISCRIMINATE)}")
 if ENABLE_THIRDS_ANALYSIS:
     print(f"Eventos analizados por tercios: {len(THIRDS_EVENTS)}")
+if ENABLE_TURNOVER_ANALYSIS and 'turnovers_df' in locals():
+    print(f"Turnovers detectados: {len(turnovers_df):,}")
 print(f"Métricas discriminadas generadas: {len(discriminated_cols)}")
 print(f"Total columnas finales: {len(final_df.columns):,}")
 
 print(f"\n📊 Análisis de posiciones:")
 print(f"  Jugadores con posición principal: {final_df['primary_position'].notna().sum()}")
 print(f"  Promedio de especialización (% en posición principal): {final_df['primary_position_share'].mean():.1%}")
+
+if percentage_metrics:
+    print(f"\n📈 Métricas de porcentaje calculadas: {len(percentage_metrics)}")
+    for metric in percentage_metrics:
+        if metric in final_df.columns:
+            avg = final_df[metric].mean()
+            if not np.isnan(avg):
+                print(f"  - {metric}: promedio = {avg:.1%}")
+
+if composite_metrics:
+    print(f"\n🔢 Métricas compuestas calculadas: {len(composite_metrics)}")
+    for metric in composite_metrics:
+        if metric in final_df.columns:
+            print(f"  - {metric}")
 
 print(f"\nTop 10 posiciones principales más comunes:")
 if final_df["primary_position"].notna().any():
@@ -880,4 +1226,35 @@ if ENABLE_THIRDS_ANALYSIS:
         print(f"\nEstadísticas de tercios:")
         print(thirds_stats[["value", "total_events", "unique_players"]].to_string(index=False))
 
+if ENABLE_TURNOVER_ANALYSIS and 'turnovers_df' in locals():
+    print(f"\n🔄 Estadísticas de turnovers:")
+    print(f"  Total turnovers: {len(turnovers_df):,}")
+    print(f"  Jugadores con turnovers: {turnovers_df['player_id'].nunique():,}")
+    print(f"  Promedio por jugador: {len(turnovers_df) / turnovers_df['player_id'].nunique():.1f}")
+    
+    if 'turnover_how' in turnovers_df.columns:
+        print(f"\n  Top 5 tipos de turnovers:")
+        for idx, (how, count) in enumerate(turnovers_df['turnover_how'].value_counts().head(5).items(), 1):
+            print(f"    {idx}. {how}: {count:,} ({count/len(turnovers_df)*100:.1f}%)")
+
+if into_final_third_metrics:
+    print(f"\n⚽ Métricas 'into final third':")
+    for metric in into_final_third_metrics:
+        if metric in final_df.columns:
+            total = final_df[metric].sum()
+            players = (final_df[metric] > 0).sum()
+            avg_per90 = final_df[f"{metric}_per90"].mean()
+            print(f"  {metric}:")
+            print(f"    Total eventos: {int(total):,}")
+            print(f"    Jugadores: {players:,}")
+            print(f"    Promedio per90: {avg_per90:.2f}")
+
 print("="*70)
+print(f"\n✅ ANÁLISIS COMPLETADO EXITOSAMENTE")
+print(f"Fin: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"Log guardado en: {log_filename}")
+print("="*70)
+
+# Cerrar el logger
+sys.stdout.close()
+sys.stdout = sys.stdout.terminal  # Restaurar stdout original
