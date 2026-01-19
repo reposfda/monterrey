@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 
 # Importar funciones de turnover
-from turnover_scoring import compute_player_turnovers
+from turnover_scoring import compute_player_turnovers, classify_turnover
 
 # ============= CONFIG =============
 PATH = "data/events_2025_2026.csv"
@@ -56,6 +56,13 @@ COLUMNS_TO_DISCRIMINATE = [
     "duel_type",
     "shot_type",
     "play_pattern",
+]
+
+# ============= COLUMNAS SOLO PARA CONTAR EVENTOS (sin métricas) =============
+COLUMNS_TO_COUNT_ONLY = [
+    "duel_outcome",
+    "interception_outcome",
+    "pass_outcome",  # ← NUEVO: para calcular % de pases completados
 ]
 
 # ============= CONFIG TERCIOS DE CANCHA =============
@@ -775,6 +782,58 @@ for disc_column in COLUMNS_TO_DISCRIMINATE:
         
         print(f"  ✓ {value}: {len(df_value):,} eventos, {value_sums['player_id'].nunique()} jugadores")
 
+# ============= 5A-COUNT) CONTAR EVENTOS SIN SUMAR MÉTRICAS =============
+print("\n" + "="*70)
+print("CONTANDO EVENTOS (SIN SUMAR MÉTRICAS)")
+print("="*70)
+
+event_count_dfs = []
+
+for count_column in COLUMNS_TO_COUNT_ONLY:
+    print(f"\n--- Contando por: {count_column} ---")
+    
+    if count_column not in df_all.columns:
+        print(f"  ⚠️ Columna '{count_column}' no encontrada, saltando...")
+        continue
+    
+    unique_values = df_all[count_column].apply(get_value_from_column).dropna().unique()
+    unique_values = [v for v in unique_values if v]
+    
+    print(f"  Valores únicos encontrados: {len(unique_values)}")
+    
+    for value in unique_values:
+        df_value = df_all[
+            df_all[count_column].apply(get_value_from_column) == value
+        ].copy()
+        
+        if len(df_value) == 0:
+            continue
+        
+        # CONTAR eventos (no sumar métricas)
+        value_counts = df_value.groupby("pid").size().reset_index(name="count")
+        value_counts = value_counts.rename(columns={"pid": "player_id"})
+        
+        # Nombre de columna
+        suffix = f"{count_column}_{str(value).lower().replace(' ', '_').replace('-', '_')}"
+        col_name = f"n_events_{suffix}"
+        
+        value_counts = value_counts.rename(columns={"count": col_name})
+        
+        event_count_dfs.append(value_counts)
+        
+        discrimination_stats.append({
+            "discrimination_type": "count_only",
+            "column": count_column,
+            "value": value,
+            "suffix": col_name,
+            "total_events": len(df_value),
+            "unique_players": value_counts["player_id"].nunique()
+        })
+        
+        print(f"  ✓ {value}: {len(df_value):,} eventos, {value_counts['player_id'].nunique()} jugadores")
+
+print(f"\n✓ Total columnas de conteo generadas: {len(event_count_dfs)}")
+
 # ============= 5B) DISCRIMINAR POR TERCIOS DE CANCHA =============
 if ENABLE_THIRDS_ANALYSIS:
     print("\n" + "="*70)
@@ -957,10 +1016,22 @@ print("="*70)
 
 discriminated_cols = []
 
+# Merge discriminaciones con métricas (OBV, xG)
 for suffix, disc_df in all_discriminated_dfs.items():
     player_sums = player_sums.merge(disc_df, on="player_id", how="left")
     new_cols = [c for c in disc_df.columns if c != "player_id"]
     discriminated_cols.extend(new_cols)
+
+# Merge conteos simples de eventos
+if event_count_dfs:
+    print("\nIntegrando conteos de eventos (duel_outcome, interception_outcome)...")
+    
+    for counts_df in event_count_dfs:
+        player_sums = player_sums.merge(counts_df, on="player_id", how="left")
+        new_count_cols = [c for c in counts_df.columns if c != "player_id"]
+        discriminated_cols.extend(new_count_cols)
+    
+    print(f"  ✓ Total conteos integrados: {len(event_count_dfs)}")
 
 if ENABLE_THIRDS_ANALYSIS and 'event_counts_by_third' in locals() and event_counts_by_third:
     print("\nIntegrando contadores de eventos por tercio...")
@@ -1017,6 +1088,187 @@ if "ball_recovery_offensive" in player_sums.columns and "ball_recovery_recovery_
     percentage_metrics.append("ball_recovery_success_pct")
     print("✓ ball_recovery_success_pct")
 
+# ============= PORCENTAJES DE DUELOS (desde outcome discriminado) =============
+print("\n--- Calculando porcentajes de duelos desde outcomes ---")
+
+# Duel success rate (desde n_events_duel_outcome_*)
+duel_won_col = None
+duel_lost_col = None
+
+# Buscar columnas de conteo de duel_outcome
+for col in player_sums.columns:
+    if "n_events_duel_outcome" in col.lower():
+        if "success_in_play" in col.lower() or "won" in col.lower():
+            duel_won_col = col
+        elif "lost_in_play" in col.lower() or "lost_out" in col.lower():
+            if duel_lost_col is None:  # Solo tomar el primero
+                duel_lost_col = col
+
+if duel_won_col and duel_lost_col:
+    # Convertir a numérico
+    player_sums[duel_won_col] = pd.to_numeric(player_sums[duel_won_col], errors="coerce")
+    player_sums[duel_lost_col] = pd.to_numeric(player_sums[duel_lost_col], errors="coerce")
+    
+    # Calcular porcentaje
+    player_sums["duel_success_rate"] = np.where(
+        (player_sums[duel_won_col] + player_sums[duel_lost_col]) > 0,
+        player_sums[duel_won_col] / (player_sums[duel_won_col] + player_sums[duel_lost_col]),
+        np.nan
+    )
+    percentage_metrics.append("duel_success_rate")
+    print(f"✓ duel_success_rate (desde {duel_won_col} y {duel_lost_col})")
+else:
+    print(f"⚠️  No se encontraron columnas n_events_duel_outcome para calcular duel_success_rate")
+    if duel_won_col:
+        print(f"    Encontrado: {duel_won_col}")
+    if duel_lost_col:
+        print(f"    Encontrado: {duel_lost_col}")
+
+# Aerial duel success rate (desde duel_type)
+aerial_won_col = None
+aerial_lost_col = None
+
+for col in player_sums.columns:
+    # Buscar en las métricas discriminadas de duel_type (estas SÍ tienen métricas sumadas)
+    if "duel_type_aerial" in col.lower():
+        # Estas columnas vienen de la discriminación con métricas, no de conteo
+        # No las usamos aquí, buscamos en outcomes
+        pass
+
+# Buscar outcomes específicos de aerial
+for col in player_sums.columns:
+    if "n_events_duel_outcome" in col.lower() and "aerial" in col.lower():
+        if "won" in col.lower() or "success" in col.lower():
+            aerial_won_col = col
+        elif "lost" in col.lower():
+            aerial_lost_col = col
+
+if aerial_won_col and aerial_lost_col:
+    player_sums[aerial_won_col] = pd.to_numeric(player_sums[aerial_won_col], errors="coerce")
+    player_sums[aerial_lost_col] = pd.to_numeric(player_sums[aerial_lost_col], errors="coerce")
+    
+    player_sums["aerial_duel_success_rate"] = np.where(
+        (player_sums[aerial_won_col] + player_sums[aerial_lost_col]) > 0,
+        player_sums[aerial_won_col] / (player_sums[aerial_won_col] + player_sums[aerial_lost_col]),
+        np.nan
+    )
+    percentage_metrics.append("aerial_duel_success_rate")
+    print(f"✓ aerial_duel_success_rate (desde {aerial_won_col} y {aerial_lost_col})")
+else:
+    print(f"⚠️  No se encontraron columnas aerial duel outcome para calcular aerial_duel_success_rate")
+
+# ============= PORCENTAJES DE INTERCEPCIONES (desde outcome discriminado) =============
+print("\n--- Calculando porcentajes de intercepciones desde outcomes ---")
+
+interception_won_col = None
+interception_lost_col = None
+
+for col in player_sums.columns:
+    if "n_events_interception_outcome" in col.lower():
+        if "won" in col.lower() or "success" in col.lower():
+            interception_won_col = col
+        elif "lost_in_play" in col.lower():
+            interception_lost_col = col
+        elif "lost_out" in col.lower() and interception_lost_col is None:
+            # Si no hay lost_in_play, usar lost_out como fallback
+            interception_lost_col = col
+
+if interception_won_col and interception_lost_col:
+    player_sums[interception_won_col] = pd.to_numeric(player_sums[interception_won_col], errors="coerce")
+    player_sums[interception_lost_col] = pd.to_numeric(player_sums[interception_lost_col], errors="coerce")
+    
+    player_sums["interception_success_rate"] = np.where(
+        (player_sums[interception_won_col] + player_sums[interception_lost_col]) > 0,
+        player_sums[interception_won_col] / (player_sums[interception_won_col] + player_sums[interception_lost_col]),
+        np.nan
+    )
+    percentage_metrics.append("interception_success_rate")
+    print(f"✓ interception_success_rate (desde {interception_won_col} y {interception_lost_col})")
+else:
+    print(f"⚠️  No se encontraron columnas n_events_interception_outcome para calcular interception_success_rate")
+    if interception_won_col:
+        print(f"    Encontrado: {interception_won_col}")
+    if interception_lost_col:
+        print(f"    Encontrado: {interception_lost_col}")
+
+# ============= PORCENTAJE DE PASES COMPLETADOS (desde outcome discriminado) =============
+print("\n--- Calculando porcentaje de pases completados desde outcomes ---")
+
+pass_complete_col = None
+pass_incomplete_col = None
+
+# Buscar columnas de conteo de pass_outcome
+for col in player_sums.columns:
+    if "n_events_pass_outcome" in col.lower():
+        # Pass completado (sin outcome = completado en StatsBomb)
+        # O puede aparecer explícitamente
+        if col.lower().endswith("_pass_outcome") or "complete" in col.lower():
+            # Este es el caso donde pass_outcome está vacío (pase completado)
+            # La columna se llamaría algo como "n_events_pass_outcome_"
+            if col.count('_') == col.count('_'):  # Verificar si termina en outcome
+                pass_complete_col = col
+        # Pass incompleto
+        if "incomplete" in col.lower() or "out" in col.lower() or "off_t" in col.lower():
+            pass_incomplete_col = col
+
+# En StatsBomb, si pass_outcome está vacío = pase completado
+# Necesitamos contar pases totales vs pases con outcome (incompletos)
+
+# Método alternativo: contar desde eventos de tipo Pass
+print("  Método: Contando passes totales vs passes con outcome...")
+
+# Contar todos los passes por jugador
+passes_total_df = df_all[df_all["type"] == "Pass"].copy()
+if not passes_total_df.empty:
+    passes_total = passes_total_df.groupby("pid").size().reset_index(name="total_passes")
+    passes_total = passes_total.rename(columns={"pid": "player_id"})
+    
+    # Merge con player_sums
+    player_sums = player_sums.merge(passes_total, on="player_id", how="left")
+    player_sums["total_passes"] = player_sums["total_passes"].fillna(0)
+    
+    # Contar pases incompletos (aquellos con pass_outcome no vacío)
+    passes_incomplete_df = passes_total_df[passes_total_df["pass_outcome"].notna()].copy()
+    
+    if not passes_incomplete_df.empty:
+        passes_incomplete = passes_incomplete_df.groupby("pid").size().reset_index(name="incomplete_passes")
+        passes_incomplete = passes_incomplete.rename(columns={"pid": "player_id"})
+        
+        player_sums = player_sums.merge(passes_incomplete, on="player_id", how="left")
+        player_sums["incomplete_passes"] = player_sums["incomplete_passes"].fillna(0)
+    else:
+        player_sums["incomplete_passes"] = 0
+    
+    # Calcular pases completados
+    player_sums["complete_passes"] = player_sums["total_passes"] - player_sums["incomplete_passes"]
+    
+    # Calcular porcentaje
+    player_sums["pass_completion_rate"] = np.where(
+        player_sums["total_passes"] > 0,
+        player_sums["complete_passes"] / player_sums["total_passes"],
+        np.nan
+    )
+    
+    percentage_metrics.append("pass_completion_rate")
+    
+    # Estadísticas
+    valid = player_sums["pass_completion_rate"].notna()
+    if valid.any():
+        avg_completion = player_sums.loc[valid, "pass_completion_rate"].mean()
+        players_with_passes = (player_sums["total_passes"] > 0).sum()
+        total_passes_all = player_sums["total_passes"].sum()
+        
+        print(f"✓ pass_completion_rate calculado")
+        print(f"  Total passes: {int(total_passes_all):,}")
+        print(f"  Jugadores con passes: {players_with_passes:,}")
+        print(f"  Promedio completion: {avg_completion:.1%}")
+else:
+    print("⚠️  No se encontraron eventos de tipo 'Pass'")
+    player_sums["total_passes"] = 0
+    player_sums["complete_passes"] = 0
+    player_sums["incomplete_passes"] = 0
+    player_sums["pass_completion_rate"] = np.nan
+
 print(f"\nTotal métricas de porcentaje calculadas: {len(percentage_metrics)}")
 
 # ============= 7) NORMALIZAR POR 90 MINUTOS =============
@@ -1047,6 +1299,24 @@ print(f"✓ Métricas discriminadas per90: {len(discriminated_per90_cols)}")
 if ENABLE_TURNOVER_ANALYSIS:
     turnover_per90_cols = [c for c in total_per90_cols if 'turnover' in c]
     print(f"✓ Métricas de turnovers per90: {len(turnover_per90_cols)}")
+
+# Normalizar métricas de shots y toques per90
+print("\n--- Normalizando métricas de shots y toques per90 ---")
+
+shots_touches_per90 = []
+
+for metric in ["total_shots", "total_touches", "touches_in_opp_box"]:
+    if metric in player_sums.columns:
+        player_sums[metric] = pd.to_numeric(player_sums[metric], errors="coerce")
+        player_sums[f"{metric}_per90"] = np.where(
+            player_sums["total_minutes"] > 0,
+            player_sums[metric] / player_sums["total_minutes"] * 90.0,
+            np.nan
+        )
+        shots_touches_per90.append(f"{metric}_per90")
+        print(f"✓ {metric}_per90")
+
+print(f"✓ Métricas de shots/toques per90: {len(shots_touches_per90)}")
 
 # ============= 8) CALCULAR MÉTRICAS COMPUESTAS (DESDE PER90) =============
 print("\n" + "="*70)
@@ -1094,7 +1364,185 @@ if available_blocks:
 
 print(f"\nTotal métricas compuestas calculadas: {len(composite_metrics)}")
 
-# ============= 9) PREPARAR DATAFRAME FINAL =============
+# ============= 9) CALCULAR XG POR SHOT =============
+print("\n" + "="*70)
+print("CALCULANDO XG POR SHOT")
+print("="*70)
+
+xg_per_shot_metrics = []
+
+# Contar shots totales por jugador desde eventos
+print("Contando shots por jugador...")
+shots_df = df_all[df_all["type"] == "Shot"].copy()
+
+if not shots_df.empty:
+    shots_count = shots_df.groupby("pid").size().reset_index(name="total_shots")
+    shots_count = shots_count.rename(columns={"pid": "player_id"})
+    
+    # Merge con player_sums
+    player_sums = player_sums.merge(shots_count, on="player_id", how="left")
+    player_sums["total_shots"] = player_sums["total_shots"].fillna(0)
+    
+    print(f"✓ Shots contados: {shots_count['total_shots'].sum():,.0f} total")
+    print(f"✓ Jugadores con shots: {(player_sums['total_shots'] > 0).sum():,}")
+    
+    # Calcular xG por shot
+    if "shot_statsbomb_xg" in player_sums.columns:
+        player_sums["shot_statsbomb_xg"] = pd.to_numeric(player_sums["shot_statsbomb_xg"], errors="coerce")
+        
+        player_sums["xg_per_shot"] = np.where(
+            player_sums["total_shots"] > 0,
+            player_sums["shot_statsbomb_xg"] / player_sums["total_shots"],
+            np.nan
+        )
+        
+        xg_per_shot_metrics.append("xg_per_shot")
+        
+        # Estadísticas
+        valid_xg = player_sums["xg_per_shot"].notna()
+        avg_xg_per_shot = player_sums.loc[valid_xg, "xg_per_shot"].mean()
+        
+        print(f"✓ xg_per_shot calculado")
+        print(f"  Promedio xG por shot: {avg_xg_per_shot:.3f}")
+    else:
+        print("⚠️  Columna 'shot_statsbomb_xg' no encontrada")
+else:
+    print("⚠️  No se encontraron eventos de tipo 'Shot'")
+    player_sums["total_shots"] = 0
+    player_sums["xg_per_shot"] = np.nan
+
+print(f"\nTotal métricas xG por shot: {len(xg_per_shot_metrics)}")
+
+# ============= 10) CALCULAR SHOT TOUCH % Y TOQUES EN ÁREA =============
+print("\n" + "="*70)
+print("CALCULANDO SHOT TOUCH % Y TOQUES EN ÁREA RIVAL")
+print("="*70)
+
+touch_metrics = []
+
+# --- 1) CALCULAR TOQUES TOTALES ---
+print("\n1. Contando toques totales por jugador...")
+
+# En StatsBomb, casi todos los eventos son "toques" excepto algunos específicos
+EXCLUDE_FROM_TOUCHES = {
+    "Starting XI",
+    "Half Start", 
+    "Half End",
+    "Substitution",
+    "Player Off",
+    "Player On",
+    "Tactical Shift",
+    "Injury Stoppage",
+    "Bad Behaviour",
+    "Referee Ball-Drop",
+    "Shield",
+    "Own Goal Against",
+    "Own Goal For",
+    "Error",
+    "Offside",
+}
+
+# Eventos que SÍ cuentan como toques
+df_touches = df_all[~df_all["type"].isin(EXCLUDE_FROM_TOUCHES)].copy()
+touches_count = df_touches.groupby("pid").size().reset_index(name="total_touches")
+touches_count = touches_count.rename(columns={"pid": "player_id"})
+
+player_sums = player_sums.merge(touches_count, on="player_id", how="left")
+player_sums["total_touches"] = player_sums["total_touches"].fillna(0)
+
+print(f"✓ Toques contados: {touches_count['total_touches'].sum():,.0f} total")
+print(f"✓ Jugadores con toques: {(player_sums['total_touches'] > 0).sum():,}")
+
+# --- 2) CALCULAR SHOT TOUCH % ---
+print("\n2. Calculando Shot Touch %...")
+
+if "total_shots" in player_sums.columns and "total_touches" in player_sums.columns:
+    player_sums["shot_touch_pct"] = np.where(
+        player_sums["total_touches"] > 0,
+        player_sums["total_shots"] / player_sums["total_touches"],
+        np.nan
+    )
+    
+    touch_metrics.append("shot_touch_pct")
+    
+    valid = player_sums["shot_touch_pct"].notna() & (player_sums["total_shots"] > 0)
+    if valid.any():
+        avg_shot_touch = player_sums.loc[valid, "shot_touch_pct"].mean()
+        players_count = valid.sum()
+        
+        print(f"✓ shot_touch_pct calculado")
+        print(f"  Promedio shot touch %: {avg_shot_touch:.2%}")
+        print(f"  Jugadores con shots: {players_count:,}")
+else:
+    print("⚠️  No se pudo calcular shot_touch_pct (falta total_shots o total_touches)")
+
+# --- 3) CALCULAR TOQUES EN ÁREA RIVAL ---
+print("\n3. Contando toques en área rival...")
+
+# Inferir dimensiones de la cancha
+if "x" in df_all.columns and df_all["x"].notna().any():
+    pitch_length, pitch_width = infer_pitch_dimensions(df_all)
+    
+    # Área rival en StatsBomb:
+    # - X: desde (length - 18) hasta length (últimos 18 metros)
+    # - Y: desde (width/2 - 22) hasta (width/2 + 22) (44 metros de ancho centrados)
+    # Para cancha 120x80: x >= 102, 18 <= y <= 62
+    
+    penalty_box_x_min = pitch_length - 18.0
+    penalty_box_y_min = (pitch_width / 2.0) - 22.0  # 40 - 22 = 18
+    penalty_box_y_max = (pitch_width / 2.0) + 22.0  # 40 + 22 = 62
+    
+    print(f"  Dimensiones cancha: {pitch_length}m x {pitch_width}m")
+    print(f"  Área rival: X >= {penalty_box_x_min:.1f}, {penalty_box_y_min:.1f} <= Y <= {penalty_box_y_max:.1f}")
+    
+    # Filtrar eventos dentro del área rival
+    df_in_box = df_touches[
+        (df_touches["x"] >= penalty_box_x_min) &
+        (df_touches["y"] >= penalty_box_y_min) &
+        (df_touches["y"] <= penalty_box_y_max)
+    ].copy()
+    
+    if not df_in_box.empty:
+        touches_in_box = df_in_box.groupby("pid").size().reset_index(name="touches_in_opp_box")
+        touches_in_box = touches_in_box.rename(columns={"pid": "player_id"})
+        
+        player_sums = player_sums.merge(touches_in_box, on="player_id", how="left")
+        player_sums["touches_in_opp_box"] = player_sums["touches_in_opp_box"].fillna(0)
+        
+        touch_metrics.append("touches_in_opp_box")
+        
+        # Calcular también el porcentaje de toques en área
+        player_sums["touches_in_opp_box_pct"] = np.where(
+            player_sums["total_touches"] > 0,
+            player_sums["touches_in_opp_box"] / player_sums["total_touches"],
+            np.nan
+        )
+        
+        touch_metrics.append("touches_in_opp_box_pct")
+        
+        # Estadísticas
+        total_in_box = touches_in_box["touches_in_opp_box"].sum()
+        players_in_box = (player_sums["touches_in_opp_box"] > 0).sum()
+        
+        print(f"✓ touches_in_opp_box contados: {int(total_in_box):,} toques")
+        print(f"✓ Jugadores con toques en área: {players_in_box:,}")
+        
+        valid_pct = player_sums["touches_in_opp_box_pct"].notna() & (player_sums["touches_in_opp_box"] > 0)
+        if valid_pct.any():
+            avg_pct = player_sums.loc[valid_pct, "touches_in_opp_box_pct"].mean()
+            print(f"✓ Promedio % toques en área: {avg_pct:.2%}")
+    else:
+        print("⚠️  No se encontraron toques en área rival")
+        player_sums["touches_in_opp_box"] = 0
+        player_sums["touches_in_opp_box_pct"] = np.nan
+else:
+    print("⚠️  No hay coordenadas X/Y disponibles para calcular toques en área")
+    player_sums["touches_in_opp_box"] = 0
+    player_sums["touches_in_opp_box_pct"] = np.nan
+
+print(f"\n✓ Total métricas de toques calculadas: {len(touch_metrics)}")
+
+# ============= 11) PREPARAR DATAFRAME FINAL =============
 base_cols = [
     "player_id", "player_name", "primary_position", "all_positions", "teams",
     "total_minutes", "minutes_primary_position", "primary_position_share",
@@ -1107,12 +1555,15 @@ final_cols = (base_cols +
               discriminated_cols + 
               total_per90_cols + 
               discriminated_per90_cols +
-              composite_metrics)
+              composite_metrics +
+              xg_per_shot_metrics +
+              touch_metrics +
+              shots_touches_per90)
 
 final_df = player_sums[final_cols].copy()
 final_df = final_df.sort_values("total_minutes", ascending=False)
 
-# ============= 10) EXPORTS CON TEMPORADA EN NOMBRE =============
+# ============= 12) EXPORTS CON TEMPORADA EN NOMBRE =============
 print("\n" + "="*70)
 print("EXPORTANDO RESULTADOS")
 print("="*70)
@@ -1179,7 +1630,7 @@ if ENABLE_TURNOVER_ANALYSIS and 'turnovers_df' in locals() and not turnovers_df.
 # 10. Log del análisis
 print(f"✓ Log del análisis: {log_filename}")
 
-# ============= 11) RESUMEN FINAL =============
+# ============= 13) RESUMEN FINAL =============
 print("\n" + "="*70)
 print(f"RESUMEN FINAL - TEMPORADA {season}")
 print("="*70)
@@ -1201,17 +1652,123 @@ print(f"  Promedio de especialización (% en posición principal): {final_df['pr
 
 if percentage_metrics:
     print(f"\n📈 Métricas de porcentaje calculadas: {len(percentage_metrics)}")
-    for metric in percentage_metrics:
-        if metric in final_df.columns:
+    print(f"\n  Porcentajes básicos:")
+    for metric in ["duel_win_pct", "tackle_success_pct", "ball_recovery_success_pct"]:
+        if metric in percentage_metrics and metric in final_df.columns:
             avg = final_df[metric].mean()
             if not np.isnan(avg):
-                print(f"  - {metric}: promedio = {avg:.1%}")
+                print(f"    - {metric}: promedio = {avg:.1%}")
+    
+    print(f"\n  Porcentajes de duelos (desde outcomes):")
+    for metric in ["duel_success_rate", "aerial_duel_success_rate"]:
+        if metric in percentage_metrics and metric in final_df.columns:
+            avg = final_df[metric].mean()
+            count = final_df[metric].notna().sum()
+            if not np.isnan(avg):
+                print(f"    - {metric}: promedio = {avg:.1%} ({count} jugadores)")
+    
+    print(f"\n  Porcentajes de intercepciones (desde outcomes):")
+    for metric in ["interception_success_rate"]:
+        if metric in percentage_metrics and metric in final_df.columns:
+            avg = final_df[metric].mean()
+            count = final_df[metric].notna().sum()
+            if not np.isnan(avg):
+                print(f"    - {metric}: promedio = {avg:.1%} ({count} jugadores)")
+    
+    print(f"\n  Porcentaje de pases completados:")
+    if "pass_completion_rate" in percentage_metrics and "pass_completion_rate" in final_df.columns:
+        valid = final_df["pass_completion_rate"].notna()
+        if valid.any():
+            avg = final_df.loc[valid, "pass_completion_rate"].mean()
+            count = valid.sum()
+            print(f"    - pass_completion_rate: promedio = {avg:.1%} ({count} jugadores)")
+            
+            if "total_passes" in final_df.columns:
+                total = final_df["total_passes"].sum()
+                print(f"    - total_passes: {int(total):,}")
+            if "complete_passes" in final_df.columns:
+                complete = final_df["complete_passes"].sum()
+                print(f"    - complete_passes: {int(complete):,}")
+            if "incomplete_passes" in final_df.columns:
+                incomplete = final_df["incomplete_passes"].sum()
+                print(f"    - incomplete_passes: {int(incomplete):,}")
 
 if composite_metrics:
     print(f"\n🔢 Métricas compuestas calculadas: {len(composite_metrics)}")
     for metric in composite_metrics:
         if metric in final_df.columns:
             print(f"  - {metric}")
+
+if xg_per_shot_metrics:
+    print(f"\n⚽ Métricas de xG por shot:")
+    if "xg_per_shot" in final_df.columns:
+        valid = final_df["xg_per_shot"].notna()
+        if valid.any():
+            avg = final_df.loc[valid, "xg_per_shot"].mean()
+            median = final_df.loc[valid, "xg_per_shot"].median()
+            players = valid.sum()
+            print(f"  - xg_per_shot:")
+            print(f"    Promedio: {avg:.3f}")
+            print(f"    Mediana: {median:.3f}")
+            print(f"    Jugadores: {players:,}")
+    
+    if "total_shots" in final_df.columns:
+        total = final_df["total_shots"].sum()
+        players_with_shots = (final_df["total_shots"] > 0).sum()
+        print(f"  - total_shots:")
+        print(f"    Total: {int(total):,}")
+        print(f"    Jugadores con shots: {players_with_shots:,}")
+
+if touch_metrics:
+    print(f"\n🤾 Métricas de toques:")
+    
+    if "total_touches" in final_df.columns:
+        total_touches = final_df["total_touches"].sum()
+        players_touches = (final_df["total_touches"] > 0).sum()
+        print(f"  - total_touches:")
+        print(f"    Total: {int(total_touches):,}")
+        print(f"    Jugadores: {players_touches:,}")
+        
+        if "total_touches_per90" in final_df.columns:
+            avg_per90 = final_df["total_touches_per90"].mean()
+            print(f"    Promedio per90: {avg_per90:.1f}")
+    
+    if "shot_touch_pct" in final_df.columns:
+        valid = final_df["shot_touch_pct"].notna() & (final_df["shot_touch_pct"] > 0)
+        if valid.any():
+            avg = final_df.loc[valid, "shot_touch_pct"].mean()
+            median = final_df.loc[valid, "shot_touch_pct"].median()
+            count = valid.sum()
+            print(f"  - shot_touch_pct:")
+            print(f"    Promedio: {avg:.2%}")
+            print(f"    Mediana: {median:.2%}")
+            print(f"    Jugadores: {count:,}")
+    
+    if "total_shots" in final_df.columns and "total_shots_per90" in final_df.columns:
+        total_shots = final_df["total_shots"].sum()
+        players_shots = (final_df["total_shots"] > 0).sum()
+        avg_shots_per90 = final_df.loc[final_df["total_shots"] > 0, "total_shots_per90"].mean()
+        print(f"  - total_shots:")
+        print(f"    Total: {int(total_shots):,}")
+        print(f"    Jugadores: {players_shots:,}")
+        print(f"    Promedio per90: {avg_shots_per90:.2f}")
+    
+    if "touches_in_opp_box" in final_df.columns:
+        total_box = final_df["touches_in_opp_box"].sum()
+        players_box = (final_df["touches_in_opp_box"] > 0).sum()
+        print(f"  - touches_in_opp_box:")
+        print(f"    Total: {int(total_box):,}")
+        print(f"    Jugadores: {players_box:,}")
+        
+        if "touches_in_opp_box_per90" in final_df.columns:
+            avg_box_per90 = final_df.loc[final_df["touches_in_opp_box"] > 0, "touches_in_opp_box_per90"].mean()
+            print(f"    Promedio per90: {avg_box_per90:.2f}")
+        
+        if "touches_in_opp_box_pct" in final_df.columns:
+            valid_pct = final_df["touches_in_opp_box_pct"].notna() & (final_df["touches_in_opp_box"] > 0)
+            if valid_pct.any():
+                avg_pct = final_df.loc[valid_pct, "touches_in_opp_box_pct"].mean()
+                print(f"  - touches_in_opp_box_pct (promedio): {avg_pct:.2%}")
 
 print(f"\nTop 10 posiciones principales más comunes:")
 if final_df["primary_position"].notna().any():
