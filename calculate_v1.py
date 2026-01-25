@@ -9,7 +9,7 @@ from datetime import datetime
 from turnover_scoring import compute_player_turnovers, classify_turnover
 
 # ============= CONFIG =============
-PATH = "data/events_2025_2026.csv"
+PATH = "data/events_2024_2025.csv"
 season = PATH.split('_', 1)[1].replace('.csv', '')
 
 ASSUME_END_CAP = 120
@@ -1068,15 +1068,53 @@ if "duel_won" in player_sums.columns and "duel_lost" in player_sums.columns:
     percentage_metrics.append("duel_win_pct")
     print("✓ duel_win_pct")
 
-# Tackle success percentage
-if "duel_tackle" in player_sums.columns and "duel_tackle_lost" in player_sums.columns:
+# Tackle success percentage (usando conteos de duel_outcome)
+print("\n--- Calculando tackle success % desde duel_outcome ---")
+
+# Buscar columnas de conteo de duel_outcome
+duel_won_cols = []
+duel_lost_cols = []
+
+for col in player_sums.columns:
+    if "n_events_duel_outcome" in col:
+        if "success_in_play" in col or "won" in col or "success_out" in col:
+            duel_won_cols.append(col)
+        elif "lost_in_play" in col or "lost_out" in col:
+            duel_lost_cols.append(col)
+
+if duel_won_cols and duel_lost_cols:
+    print(f"  Columnas de duelos ganados: {duel_won_cols}")
+    print(f"  Columnas de duelos perdidos: {duel_lost_cols}")
+    
+    # Sumar todos los duelos ganados
+    player_sums["total_duels_won"] = sum(
+        pd.to_numeric(player_sums[col], errors="coerce").fillna(0) 
+        for col in duel_won_cols
+    )
+    
+    # Sumar todos los duelos perdidos
+    player_sums["total_duels_lost"] = sum(
+        pd.to_numeric(player_sums[col], errors="coerce").fillna(0) 
+        for col in duel_lost_cols
+    )
+    
+    # Calcular porcentaje
     player_sums["tackle_success_pct"] = np.where(
-        (player_sums["duel_tackle"] + player_sums["duel_tackle_lost"]) > 0,
-        player_sums["duel_tackle"] / (player_sums["duel_tackle"] + player_sums["duel_tackle_lost"]),
+        (player_sums["total_duels_won"] + player_sums["total_duels_lost"]) > 0,
+        player_sums["total_duels_won"] / (player_sums["total_duels_won"] + player_sums["total_duels_lost"]),
         np.nan
     )
+    
     percentage_metrics.append("tackle_success_pct")
-    print("✓ tackle_success_pct")
+    print("✓ tackle_success_pct calculado")
+    
+    # Estadísticas
+    valid = player_sums["tackle_success_pct"].notna()
+    if valid.any():
+        avg_tackle = player_sums.loc[valid, "tackle_success_pct"].mean()
+        print(f"  Promedio: {avg_tackle:.1%}")
+else:
+    print("⚠️  tackle_success_pct NO calculado (columnas n_events_duel_outcome no encontradas)")
 
 # Ball recovery success percentage
 if "ball_recovery_offensive" in player_sums.columns and "ball_recovery_recovery_failure" in player_sums.columns:
@@ -1271,6 +1309,36 @@ else:
 
 print(f"\nTotal métricas de porcentaje calculadas: {len(percentage_metrics)}")
 
+# ============= 6B) CALCULAR TOTALES DE MÉTRICAS COMPUESTAS =============
+print("\n" + "="*70)
+print("CALCULANDO TOTALES DE MÉTRICAS COMPUESTAS")
+print("="*70)
+
+# Foul committed total (suma de sus variantes)
+print("\n--- Calculando foul_committed total ---")
+foul_cols = ["foul_committed_advantage", "foul_committed_penalty", "foul_committed_offensive"]
+available_fouls = [c for c in foul_cols if c in player_sums.columns]
+
+if available_fouls:
+    print(f"  Columnas encontradas: {available_fouls}")
+    player_sums["foul_committed"] = sum(
+        pd.to_numeric(player_sums[col], errors="coerce").fillna(0) 
+        for col in available_fouls
+    )
+    
+    # Agregar a num_cols para que se normalice per90 automáticamente
+    if "foul_committed" not in num_cols:
+        num_cols.append("foul_committed")
+    
+    total = player_sums["foul_committed"].sum()
+    players_with_fouls = (player_sums["foul_committed"] > 0).sum()
+    print(f"✓ foul_committed calculado")
+    print(f"  Total faltas: {int(total):,}")
+    print(f"  Jugadores con faltas: {players_with_fouls:,}")
+else:
+    print(f"⚠️  No se encontraron columnas de foul_committed")
+    player_sums["foul_committed"] = 0
+
 # ============= 7) NORMALIZAR POR 90 MINUTOS =============
 print("\n" + "="*70)
 print("NORMALIZANDO POR 90 MINUTOS")
@@ -1300,23 +1368,8 @@ if ENABLE_TURNOVER_ANALYSIS:
     turnover_per90_cols = [c for c in total_per90_cols if 'turnover' in c]
     print(f"✓ Métricas de turnovers per90: {len(turnover_per90_cols)}")
 
-# Normalizar métricas de shots y toques per90
-print("\n--- Normalizando métricas de shots y toques per90 ---")
-
-shots_touches_per90 = []
-
-for metric in ["total_shots", "total_touches", "touches_in_opp_box"]:
-    if metric in player_sums.columns:
-        player_sums[metric] = pd.to_numeric(player_sums[metric], errors="coerce")
-        player_sums[f"{metric}_per90"] = np.where(
-            player_sums["total_minutes"] > 0,
-            player_sums[metric] / player_sums["total_minutes"] * 90.0,
-            np.nan
-        )
-        shots_touches_per90.append(f"{metric}_per90")
-        print(f"✓ {metric}_per90")
-
-print(f"✓ Métricas de shots/toques per90: {len(shots_touches_per90)}")
+# NOTA: La normalización per90 de shots/touches se hace después de calcularlos (Sección 10)
+# No se hace aquí porque estas métricas aún no existen en player_sums
 
 # ============= 8) CALCULAR MÉTRICAS COMPUESTAS (DESDE PER90) =============
 print("\n" + "="*70)
@@ -1325,16 +1378,61 @@ print("="*70)
 
 composite_metrics = []
 
-# Defensive actions lost per90
-required_defensive = ["dribbled_past_per90", "duel_tackle_lost_per90", "foul_committed_per90"]
-if all(c in player_sums.columns for c in required_defensive):
-    player_sums["defensive_actions_lost_per90"] = (
-        player_sums["dribbled_past_per90"].fillna(0)
-        + player_sums["duel_tackle_lost_per90"].fillna(0)
-        + player_sums["foul_committed_per90"].fillna(0)
+# Defensive actions lost per90 (usando conteos de duel_outcome + faltas)
+print("\n--- Calculando defensive actions lost per90 ---")
+
+defensive_components = []
+
+# 1. Duelos perdidos (desde n_events_duel_outcome_lost)
+duel_lost_per90_col = None
+for col in player_sums.columns:
+    if "n_events_duel_outcome_lost" in col and col.endswith("_per90"):
+        duel_lost_per90_col = col
+        break
+
+if duel_lost_per90_col:
+    defensive_components.append((duel_lost_per90_col, "duelos perdidos"))
+    print(f"  ✓ Usando: {duel_lost_per90_col}")
+else:
+    # Si no existe per90, calcularlo desde el total
+    lost_cols = [c for c in player_sums.columns if "n_events_duel_outcome_lost" in c and not c.endswith("_per90")]
+    if lost_cols:
+        # Sumar todos los duelos perdidos y normalizar
+        player_sums["duels_lost_total"] = sum(
+            pd.to_numeric(player_sums[col], errors="coerce").fillna(0) 
+            for col in lost_cols
+        )
+        player_sums["duels_lost_per90"] = np.where(
+            player_sums["total_minutes"] > 0,
+            player_sums["duels_lost_total"] / player_sums["total_minutes"] * 90.0,
+            np.nan
+        )
+        defensive_components.append(("duels_lost_per90", "duelos perdidos"))
+        print(f"  ✓ Calculado: duels_lost_per90 (desde {len(lost_cols)} columnas)")
+
+# 2. Faltas cometidas (calculado en sección 6B)
+if "foul_committed_per90" in player_sums.columns:
+    defensive_components.append(("foul_committed_per90", "faltas"))
+    print(f"  ✓ Usando: foul_committed_per90")
+else:
+    print(f"  ⚠️  foul_committed_per90 no disponible")
+
+# Calcular la suma
+if defensive_components:
+    player_sums["defensive_actions_lost_per90"] = sum(
+        pd.to_numeric(player_sums[col], errors="coerce").fillna(0) 
+        for col, _ in defensive_components
     )
     composite_metrics.append("defensive_actions_lost_per90")
-    print("✓ defensive_actions_lost_per90")
+    
+    components_str = ", ".join([desc for _, desc in defensive_components])
+    print(f"✓ defensive_actions_lost_per90 calculado ({components_str})")
+    
+    # Estadísticas
+    avg = player_sums["defensive_actions_lost_per90"].mean()
+    print(f"  Promedio: {avg:.2f} per90")
+else:
+    print(f"⚠️  defensive_actions_lost_per90 NO calculado (no se encontraron componentes)")
 
 # Clearances total per90
 clearance_cols = [
@@ -1542,6 +1640,26 @@ else:
 
 print(f"\n✓ Total métricas de toques calculadas: {len(touch_metrics)}")
 
+# Normalizar métricas de shots y toques per90 (AHORA QUE YA EXISTEN)
+print("\n--- Normalizando métricas de shots y toques per90 ---")
+
+shots_touches_per90 = []
+
+for metric in ["total_shots", "total_touches", "touches_in_opp_box", "complete_passes"]:
+    if metric in player_sums.columns:
+        player_sums[metric] = pd.to_numeric(player_sums[metric], errors="coerce")
+        player_sums[f"{metric}_per90"] = np.where(
+            player_sums["total_minutes"] > 0,
+            player_sums[metric] / player_sums["total_minutes"] * 90.0,
+            np.nan
+        )
+        shots_touches_per90.append(f"{metric}_per90")
+        print(f"✓ {metric}_per90")
+    else:
+        print(f"⚠️  {metric} no encontrado en player_sums")
+
+print(f"✓ Métricas de shots/toques per90: {len(shots_touches_per90)}")
+
 # ============= 11) PREPARAR DATAFRAME FINAL =============
 base_cols = [
     "player_id", "player_name", "primary_position", "all_positions", "teams",
@@ -1560,6 +1678,38 @@ final_cols = (base_cols +
               touch_metrics +
               shots_touches_per90)
 
+# Validar qué columnas existen
+print("\n--- Validando columnas para export ---")
+print(f"Total columnas en final_cols: {len(final_cols)}")
+
+# Verificar columnas clave
+key_cols_to_check = [
+    "touches_in_opp_box_per90",
+    "total_shots_per90", 
+    "total_touches_per90",
+    "complete_passes_per90",
+    "tackle_success_pct",
+    "defensive_actions_lost_per90"
+]
+
+print("\nColumnas clave:")
+for col in key_cols_to_check:
+    in_final_cols = col in final_cols
+    in_player_sums = col in player_sums.columns
+    print(f"  {col}:")
+    print(f"    En final_cols: {in_final_cols}")
+    print(f"    En player_sums: {in_player_sums}")
+    if in_final_cols and not in_player_sums:
+        print(f"    ⚠️  PROBLEMA: En final_cols pero NO en player_sums")
+
+# Filtrar solo columnas que existen en player_sums
+missing_cols = [c for c in final_cols if c not in player_sums.columns]
+if missing_cols:
+    print(f"\n⚠️  Columnas en final_cols que NO existen en player_sums: {len(missing_cols)}")
+    print(f"Primeras 10: {missing_cols[:10]}")
+    final_cols = [c for c in final_cols if c in player_sums.columns]
+    print(f"✓ Filtradas. Columnas finales: {len(final_cols)}")
+
 final_df = player_sums[final_cols].copy()
 final_df = final_df.sort_values("total_minutes", ascending=False)
 
@@ -1568,67 +1718,84 @@ print("\n" + "="*70)
 print("EXPORTANDO RESULTADOS")
 print("="*70)
 
-# 1. Completo
+# ============= ÚNICO EXPORT CSV: all_players_complete =============
 output_complete = os.path.join(OUTPUT_DIR, f"all_players_complete_{season}.csv")
 final_df.to_csv(output_complete, index=False)
-print(f"✓ Completo: {output_complete}")
+print(f"\n✓ CSV EXPORTADO: {output_complete}")
 
-# 2. Solo per90 (totales + discriminadas)
-output_per90_all = os.path.join(OUTPUT_DIR, f"all_players_per90_all_{season}.csv")
+# ============= RESTO DE OUTPUTS: SOLO EN LOG (NO CSV) =============
+print("\n" + "="*70)
+print("OUTPUTS GENERADOS (SOLO EN LOG - NO SE EXPORTAN COMO CSV)")
+print("="*70)
+
+# 2. Solo per90 (totales + discriminadas) - IMPRESO EN LOG
+print("\n--- ALL PLAYERS PER90 ALL ---")
 per90_all_cols = base_cols + total_per90_cols + discriminated_per90_cols
-final_df[per90_all_cols].to_csv(output_per90_all, index=False)
-print(f"✓ Per90 (todas): {output_per90_all}")
+per90_all_df = final_df[per90_all_cols].copy()
+print(f"Columnas: {len(per90_all_df.columns)}")
+print(f"Jugadores: {len(per90_all_df)}")
+print("\nPrimeras 3 columnas y 3 filas:")
+print(per90_all_df.iloc[:3, :3].to_string())
 
-# 3. Solo discriminadas per90
-output_per90_disc = os.path.join(OUTPUT_DIR, f"all_players_per90_discriminated_{season}.csv")
+# 3. Solo discriminadas per90 - IMPRESO EN LOG
+print("\n--- ALL PLAYERS PER90 DISCRIMINATED ---")
 disc_per90_cols = base_cols + discriminated_per90_cols
-final_df[disc_per90_cols].to_csv(output_per90_disc, index=False)
-print(f"✓ Per90 (solo discriminadas): {output_per90_disc}")
+disc_per90_df = final_df[disc_per90_cols].copy()
+print(f"Columnas: {len(disc_per90_df.columns)}")
+print(f"Jugadores: {len(disc_per90_df)}")
 
-# 4. Estadísticas de discriminaciones
+# 4. Estadísticas de discriminaciones - IMPRESO EN LOG
+print("\n--- DISCRIMINATION STATISTICS ---")
 disc_stats_df = pd.DataFrame(discrimination_stats).sort_values("total_events", ascending=False)
-output_stats = os.path.join(OUTPUT_DIR, f"discrimination_statistics_{season}.csv")
-disc_stats_df.to_csv(output_stats, index=False)
-print(f"✓ Estadísticas: {output_stats}")
+print(f"Total discriminaciones: {len(disc_stats_df)}")
+print("\nTop 10 discriminaciones por volumen:")
+print(disc_stats_df.head(10).to_string(index=False))
 
-# 5. Solo tercios per90
+# 5. Solo tercios per90 - IMPRESO EN LOG
 if ENABLE_THIRDS_ANALYSIS:
+    print("\n--- ALL PLAYERS THIRDS PER90 ---")
     thirds_cols = [c for c in discriminated_per90_cols if "third_" in c]
     if thirds_cols:
-        output_thirds = os.path.join(OUTPUT_DIR, f"all_players_thirds_per90_{season}.csv")
-        final_df[base_cols + thirds_cols].to_csv(output_thirds, index=False)
-        print(f"✓ Solo tercios per90: {output_thirds}")
+        thirds_df = final_df[base_cols + thirds_cols].copy()
+        print(f"Columnas: {len(thirds_df.columns)}")
+        print(f"Jugadores: {len(thirds_df)}")
 
-# 6. Minutos por partido CON POSICIONES
-output_minutes = os.path.join(OUTPUT_DIR, f"player_minutes_by_match_{season}.csv")
-minutes_df.merge(
+# 6. Minutos por partido CON POSICIONES - IMPRESO EN LOG
+print("\n--- PLAYER MINUTES BY MATCH ---")
+minutes_with_pos = minutes_df.merge(
     player_minutes_summary[["player_id", "player_name", "primary_position"]], 
     on="player_id", how="left"
-).to_csv(output_minutes, index=False)
-print(f"✓ Minutos por partido: {output_minutes}")
+)
+print(f"Total registros: {len(minutes_with_pos)}")
+print("\nPrimeras 5 filas:")
+print(minutes_with_pos.head(5).to_string(index=False))
 
-# 7. Minutos por jugador y posición
-output_pos_minutes = os.path.join(OUTPUT_DIR, f"player_minutes_by_position_{season}.csv")
-position_minutes.merge(
+# 7. Minutos por jugador y posición - IMPRESO EN LOG
+print("\n--- PLAYER MINUTES BY POSITION ---")
+pos_minutes_detail = position_minutes.merge(
     player_minutes_summary[["player_id", "player_name", "total_minutes"]], 
     on="player_id", how="left"
-).sort_values(["player_id", "minutes_in_position"], ascending=[True, False]).to_csv(output_pos_minutes, index=False)
-print(f"✓ Minutos por posición: {output_pos_minutes}")
+).sort_values(["player_id", "minutes_in_position"], ascending=[True, False])
+print(f"Total registros: {len(pos_minutes_detail)}")
+print("\nPrimeras 5 filas:")
+print(pos_minutes_detail.head(5).to_string(index=False))
 
-# 8. Detalle de turnovers (si está habilitado)
+# 8. Detalle de turnovers - IMPRESO EN LOG
 if ENABLE_TURNOVER_ANALYSIS and 'turnovers_df' in locals() and not turnovers_df.empty:
-    output_turnovers = os.path.join(OUTPUT_DIR, f"turnovers_detail_{season}.csv")
-    turnovers_df.to_csv(output_turnovers, index=False)
-    print(f"✓ Detalle de turnovers: {output_turnovers}")
+    print("\n--- TURNOVERS DETAIL ---")
+    print(f"Total eventos de turnover: {len(turnovers_df)}")
+    print("\nPrimeras 5 filas:")
+    print(turnovers_df.head(5).to_string(index=False))
     
-    # 9. Solo métricas de turnovers per90
+    # 9. Solo métricas de turnovers per90 - IMPRESO EN LOG
     if 'turnover_per90_cols' in locals() and turnover_per90_cols:
-        output_turnovers_per90 = os.path.join(OUTPUT_DIR, f"all_players_turnovers_per90_{season}.csv")
-        final_df[base_cols + turnover_per90_cols].to_csv(output_turnovers_per90, index=False)
-        print(f"✓ Solo turnovers per90: {output_turnovers_per90}")
+        print("\n--- ALL PLAYERS TURNOVERS PER90 ---")
+        turnovers_per90_df = final_df[base_cols + turnover_per90_cols].copy()
+        print(f"Columnas: {len(turnovers_per90_df.columns)}")
+        print(f"Jugadores: {len(turnovers_per90_df)}")
 
 # 10. Log del análisis
-print(f"✓ Log del análisis: {log_filename}")
+print(f"\n✓ Log completo del análisis guardado en: {log_filename}")
 
 # ============= 13) RESUMEN FINAL =============
 print("\n" + "="*70)
