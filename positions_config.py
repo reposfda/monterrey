@@ -33,7 +33,7 @@ POSITION_MAP = {
     "Center Midfield": "Interior",
     "Center Attacking Midfield":"Interior",
     "Left Attacking Midfield":"Interior",
-    "Right Attacking Midfield":"Interior"
+    "Right Attacking Midfield":"Interior",
 
     # EXTREMOS
     "Left Wing": "Extremo",
