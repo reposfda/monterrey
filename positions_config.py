@@ -12,9 +12,9 @@ POSITION_MAP = {
     "Goalkeeper": "Golero",
 
     # ZAGUEROS
-    "Centre Back": "Zaguero",
-    "Left Centre Back": "Zaguero",
-    "Right Centre Back": "Zaguero",
+    "Center Back": "Zaguero",
+    "Left Center Back": "Zaguero",
+    "Right Center Back": "Zaguero",
 
     # LATERALES
     "Left Back": "Lateral",
@@ -23,21 +23,20 @@ POSITION_MAP = {
     "Right Wing Back": "Lateral",
 
     # VOLANTES (base / mixtos)
-    "Centre Defensive Midfield": "Volante",
+    "Center Defensive Midfield": "Volante",
     "Left Defensive Midfield": "Volante",
     "Right Defensive Midfield": "Volante",
 
     # INTERIORES / MEDIAPUNTAS
-    "Left Centre Midfield": "Interior",
-    "Right Centre Midfield": "Interior",
-    "Centre Attacking Midfield": "Interior",
-    "Center Attacking Midfield": "Interior",  # Variante alternativa
+    "Left Center Midfield": "Interior",
+    "Right Center Midfield": "Interior",
+    "Center Attacking Midfield": "Interior",
 
     # EXTREMOS
     "Left Wing": "Extremo",
     "Right Wing": "Extremo",
-    "Left Midfiel": "Extremo",
-    "Right Midfiel": "Extremo",
+    "Left Midfield": "Extremo",
+    "Right Midfield": "Extremo",
 
     # DELANTEROS
     "Center Forward": "Delantero",
