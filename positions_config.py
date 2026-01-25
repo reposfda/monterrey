@@ -30,7 +30,10 @@ POSITION_MAP = {
     # INTERIORES / MEDIAPUNTAS
     "Left Center Midfield": "Interior",
     "Right Center Midfield": "Interior",
-    "Center Attacking Midfield": "Interior",
+    "Center Midfield": "Interior",
+    "Center Attacking Midfield":"Interior",
+    "Left Attacking Midfield":"Interior",
+    "Right Attacking Midfield":"Interior"
 
     # EXTREMOS
     "Left Wing": "Extremo",
