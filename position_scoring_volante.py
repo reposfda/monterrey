@@ -166,7 +166,7 @@ def run_volante_scoring(
 
     # --- TERRITORIALES (control defensivo / territorialidad) ---
     TERRITORIALES = [
-        ("interception_per90", 0.25, False),                       # YA EXISTE
+        ("interception_success_rate", 0.25, False),                # YA EXISTE
         ("ball_recovery_offensive_per90", 0.20, False),            # YA EXISTE
         ("pressure_per90", 0.20, False),                           # YA EXISTE
         ("counterpress_per90", 0.10, False),                       # YA EXISTE
@@ -176,8 +176,8 @@ def run_volante_scoring(
 
     # --- CONTENCIÓN (acción defensiva tipo zagueros) ---
     CONTENCION = [
-        ("duel_tackle_per90", 0.30, False),                        # Necesita verificar disponibilidad
-        ("interception_per90", 0.25, False),                       # YA EXISTE
+        ("tackle_success_pct", 0.30, False),                       # Necesita verificar disponibilidad
+        ("interception_success_rate", 0.25, False),                # YA EXISTE
         ("ball_recovery_offensive_per90", 0.15, False),            # YA EXISTE
         ("obv_total_net_duel_type_tackle_per90", 0.15, False),     # YA EXISTE
         ("obv_total_net_type_interception_per90", 0.15, False),    # YA EXISTE
@@ -355,8 +355,8 @@ if __name__ == "__main__":
     from pathlib import Path
     
     # Rutas
-    per90_csv = Path("outputs/all_players_complete_2024_2025.csv")
-    out_csv = Path("outputs/volante_scores_2024_2025.csv")
+    per90_csv = Path("outputs/all_players_complete_2025_2026.csv")
+    out_csv = Path("outputs/volante_scores_2025_2026.csv")
     
     # Ejecutar scoring para volantes
     scores = run_volante_scoring(

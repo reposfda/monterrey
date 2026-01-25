@@ -149,9 +149,9 @@ def run_interior_scoring(
     # --- 1. BOX TO BOX (presencia en ambas áreas) ---
     BOX_TO_BOX = [
         # Acciones defensivas
-        ("interception_per90", 0.15, False),
+        ("interception_success_rate", 0.15, False),
         ("ball_recovery_offensive_per90", 0.10, False),
-        ("duel_tackle_per90", 0.10, False),
+        ("tackle_success_pct", 0.10, False),
         
         # Acciones ofensivas
         ("shot_statsbomb_xg_per90", 0.15, False),
