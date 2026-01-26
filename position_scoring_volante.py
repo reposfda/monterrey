@@ -151,37 +151,58 @@ def run_volante_scoring(
     
     # --- POSESIÓN (sostenimiento) ---
     POSESION = [
-        ("complete_passes_per90", 0.45, False),    # Necesita calcular de complete_passes
-        ("pass_completion_rate", 0.25, False),     # YA EXISTE
-        ("total_turnovers_per90", 0.30, True),     # YA EXISTE (invertido)
+        # Volumen de participación
+        ("complete_passes_per90",                  0.30, False),
+
+        # Sostener bajo presión (clave para volante central)
+        ("completed_passes_under_pressure_per90",  0.25, False),
+
+        # Cuidado del balón (invertido)
+        ("total_turnovers_per90",                  0.25, True),
+
+        # Calidad / valor del pase
+        ("obv_total_net_type_pass_per90",           0.20, False),
     ]
 
     # --- PROGRESIÓN ---
     PROGRESION = [
-        ("pass_into_final_third_per90", 0.20, False),      # YA EXISTE
-        ("carry_into_final_third_per90", 0.15, False),     # YA EXISTE
-        ("obv_total_net_type_pass_per90", 0.40, False),    # YA EXISTE
-        ("obv_total_net_type_carry_per90", 0.25, False),   # YA EXISTE (reemplaza xg_buildup)
+        ("pass_into_final_third_per90",  0.20, False),
+        ("carry_into_final_third_per90", 0.15, False),
+        ("obv_total_net_type_pass_per90",0.45, False),
+        ("obv_total_net_type_carry_per90",0.20, False),
     ]
 
     # --- TERRITORIALES (control defensivo / territorialidad) ---
     TERRITORIALES = [
-        ("interception_success_rate", 0.25, False),                # YA EXISTE
-        ("ball_recovery_offensive_per90", 0.20, False),            # YA EXISTE
-        ("pressure_per90", 0.20, False),                           # YA EXISTE
-        ("counterpress_per90", 0.10, False),                       # YA EXISTE
-        ("obv_total_net_type_interception_per90", 0.15, False),    # YA EXISTE
-        ("obv_total_net_type_ball_recovery_per90", 0.10, False),   # YA EXISTE
+        # Presión territorial (35%)
+        ("n_events_third_defensive_pressure_per90", 0.12, False),
+        ("n_events_third_middle_pressure_per90",    0.18, False),
+        ("counterpress_per90",                      0.05, False),
+
+        # Recuperación territorial (35%)
+        ("n_events_third_defensive_ball_recovery_per90", 0.15, False),
+        ("n_events_third_middle_ball_recovery_per90",    0.20, False),
+
+        # Lectura e impacto (30%)
+        ("obv_total_net_type_interception_per90",   0.15, False),
+        ("obv_total_net_type_ball_recovery_per90",  0.15, False),
     ]
 
     # --- CONTENCIÓN (acción defensiva tipo zagueros) ---
     CONTENCION = [
-        ("tackle_success_pct", 0.30, False),                       # Necesita verificar disponibilidad
-        ("interception_success_rate", 0.25, False),                # YA EXISTE
-        ("ball_recovery_offensive_per90", 0.15, False),            # YA EXISTE
-        ("obv_total_net_duel_type_tackle_per90", 0.15, False),     # YA EXISTE
-        ("obv_total_net_type_interception_per90", 0.15, False),    # YA EXISTE
-        ("dribbled_past_per90", 0.10, True),                       # YA EXISTE (invertido)
+        # Tackles: volumen + impacto (40%)
+        ("duel_tackle_per90",                    0.20, False),
+        ("obv_total_net_duel_type_tackle_per90", 0.20, False),
+
+        # Intercepciones: lectura + valor (35%)
+        ("interception_success_rate",            0.15, False),
+        ("obv_total_net_type_interception_per90",0.20, False),
+
+        # Protección de zona (15%)
+        ("n_events_third_defensive_interception_per90", 0.15, False),
+
+        # Ser superado (10%) → invertido
+        ("dribbled_past_per90",                  0.10, True),
     ]
 
     CATS = {

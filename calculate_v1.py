@@ -1286,6 +1286,41 @@ if not passes_total_df.empty:
         player_sums["complete_passes"] / player_sums["total_passes"],
         np.nan
     )
+
+    # ============================
+    # COMPLETED PASSES UNDER PRESSURE (count)
+    # ============================
+    # Definición:
+    # Pass AND under_pressure==True AND pass_outcome is NaN (completado)
+    if "under_pressure" in passes_total_df.columns:
+        passes_up_completed_df = passes_total_df[
+            (passes_total_df["under_pressure"] == True) &
+            (passes_total_df["pass_outcome"].isna())
+        ].copy()
+
+        if not passes_up_completed_df.empty:
+            up_completed = (
+                passes_up_completed_df.groupby("pid")
+                .size()
+                .reset_index(name="completed_passes_under_pressure")
+                .rename(columns={"pid": "player_id"})
+            )
+            player_sums = player_sums.merge(up_completed, on="player_id", how="left")
+            player_sums["completed_passes_under_pressure"] = player_sums["completed_passes_under_pressure"].fillna(0)
+        else:
+            player_sums["completed_passes_under_pressure"] = 0
+
+        # Importante: agregar a num_cols para que se calcule _per90 en la sección 7
+        if "completed_passes_under_pressure" not in num_cols:
+            num_cols.append("completed_passes_under_pressure")
+
+        print("✓ completed_passes_under_pressure calculado")
+        print(f"  Total (liga): {int(player_sums['completed_passes_under_pressure'].sum()):,}")
+        print(f"  Jugadores con >=1: {(player_sums['completed_passes_under_pressure'] > 0).sum():,}")
+    else:
+        print("⚠️  No existe columna 'under_pressure' en df_all. Se setea completed_passes_under_pressure=0")
+        player_sums["completed_passes_under_pressure"] = 0
+
     
     percentage_metrics.append("pass_completion_rate")
     
