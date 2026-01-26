@@ -45,6 +45,7 @@ POSITION_MAP = {
     "Center Forward": "Delantero",
     "Left Center Forward": "Delantero",
     "Right Center Forward": "Delantero",
+    "Secondary Striker": "Delantero"
 }
 
 # Grupos organizados (invertido de POSITION_MAP)
