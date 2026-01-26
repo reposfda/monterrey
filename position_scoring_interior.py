@@ -7,7 +7,7 @@ Categorías:
 1. Box to Box - Presencia en ambas áreas
 2. Desequilibrio / Creativos - Ruptura con regate y conducción
 3. Organización - Construcción y progresión con pase
-4. Auxilio / Equilibrio - Trabajo defensivo
+4. Contencion / Presion - Trabajo defensivo
 
 Requiere:
 - all_players_per90_all.csv (output del script principal)
@@ -86,7 +86,7 @@ def filter_by_position_group(df: pd.DataFrame, group: str) -> pd.DataFrame:
 def run_interior_scoring(
     per90_csv: Path,
     out_csv: Path,
-    position_group: str = "Interior",
+    position_group: str = "Interior/Mediapunta",
     min_minutes: int = 450,
     min_matches: int = 3,
     flag_q: float = 0.75,
@@ -148,83 +148,82 @@ def run_interior_scoring(
     
     # --- 1. BOX TO BOX (presencia en ambas áreas) ---
     BOX_TO_BOX = [
-        # Acciones defensivas
-        ("interception_success_rate", 0.15, False),
-        ("ball_recovery_offensive_per90", 0.10, False),
-        ("tackle_success_pct", 0.10, False),
-        
-        # Acciones ofensivas
-        ("shot_statsbomb_xg_per90", 0.15, False),
-        ("xa_per90", 0.10, False),
-        ("obv_total_net_type_shot_per90", 0.10, False),
-        
-        # Presencia en área rival
-        ("touches_in_opp_box_per90", 0.15, False),
-        ("n_events_third_attacking_pass_per90", 0.10, False),
-        
-        # Volumen general
-        ("total_touches_per90", 0.05, False),
+        # Recuperaciones por tercio (30%)
+        ("n_events_third_defensive_ball_recovery_per90", 0.08, False),
+        ("n_events_third_middle_ball_recovery_per90",    0.14, False),
+        ("n_events_third_attacking_ball_recovery_per90", 0.08, False),
+
+        # Duelos por tercio (30%)
+        ("n_events_third_defensive_duel_per90", 0.08, False),
+        ("n_events_third_middle_duel_per90",    0.14, False),
+        ("n_events_third_attacking_duel_per90", 0.08, False),
+
+        # Progresión / llegada (25%)
+        ("carry_into_final_third_per90", 0.10, False),
+        ("touches_in_opp_box_per90",     0.10, False),
+        ("shot_touch_pct",               0.05, False),
+
+        # Volumen general de participación (15%)
+        ("total_touches_per90", 0.15, False),
     ]
 
     # --- 2. DESEQUILIBRIO / CREATIVOS (ruptura individual) ---
     DESEQUILIBRIO = [
-        # Dribble
+        # 1) Ruptura individual (55%)
         ("obv_total_net_type_dribble_per90", 0.30, False),
-        
-        # Carry (conducción)
-        ("obv_total_net_type_carry_per90", 0.25, False),
+        ("obv_total_net_type_carry_per90",   0.25, False),
+
+        # 2) Progresión profunda (25%)
         ("carry_into_final_third_per90", 0.15, False),
-        
-        # Progresiones profundas
-        ("pass_into_final_third_per90", 0.10, False),
-        
-        # Generación de tiros
+        ("pass_into_final_third_per90",  0.10, False),
+
+        # 3) Amenaza de remate (20%)
         ("obv_total_net_type_shot_per90", 0.10, False),
-        ("shot_statsbomb_xg_per90", 0.10, False),
+        ("shot_statsbomb_xg_per90",       0.10, False),
     ]
 
     # --- 3. ORGANIZACIÓN / PROGRESIÓN (construcción con pase) ---
     ORGANIZACION = [
-        # OBV de pases
-        ("obv_total_net_type_pass_per90", 0.35, False),
-        
-        # Volumen y precisión
+        # 1) Valor del pase (OBV)
+        ("obv_total_net_type_pass_per90", 0.30, False),
+
+        # 2) Volumen (participación)
         ("complete_passes_per90", 0.20, False),
-        ("pass_completion_rate", 0.10, False),
-        
-        # Creación
-        ("xa_per90", 0.15, False),
-        ("obv_total_net_play_pattern_regular_play_per90", 0.10, False),  # xG buildup proxy
-        
-        # Pérdidas (invertido)
-        ("total_turnovers_per90", 0.10, True),
+
+        # 3) Creación / progresión con pase
+        ("pass_shot_assist_per90",                   0.12, False),
+        ("obv_total_net_third_attacking_pass_per90", 0.13, False),
+        ("obv_total_net_play_pattern_regular_play_per90", 0.10, False),
+
+        # 4) Seguridad / cuidado del balón (invertido)
+        ("total_turnovers_per90", 0.15, True),
     ]
 
-    # --- 4. AUXILIO / EQUILIBRIO (trabajo defensivo) ---
-    AUXILIO = [
-        # Recuperaciones en campo rival
-        ("ball_recovery_offensive_per90", 0.20, False),
-        ("n_events_third_attacking_ball_recovery_per90", 0.10, False),
-        
-        # Tackles e intercepciones
-        ("duel_tackle_per90", 0.15, False),
-        ("interception_per90", 0.15, False),
-        ("interception_success_rate", 0.05, False),
-        
-        # Presiones
-        ("pressure_per90", 0.15, False),
-        ("n_events_third_attacking_pressure_per90", 0.10, False),
-        ("counterpress_per90", 0.05, False),
-        
-        # OBV defensivo
-        ("obv_total_net_type_interception_per90", 0.05, False),
+    # --- 4. CONTENCION_PRESION (trabajo defensivo) ---
+    CONTENCION_PRESION = [
+        # Presión (40%) - sostener + recuperar rápido
+        ("n_events_third_middle_pressure_per90",    0.18, False),
+        ("n_events_third_attacking_pressure_per90", 0.12, False),
+        ("counterpress_per90",                     0.10, False),
+
+        # Recuperaciones (25%) - segundo balón y agresividad
+        ("n_events_third_middle_ball_recovery_per90",    0.12, False),
+        ("n_events_third_attacking_ball_recovery_per90", 0.13, False),
+
+        # Duelos / tackles (20%)
+        ("obv_total_net_duel_type_tackle_per90", 0.10, False),
+        ("duel_tackle_per90",                    0.10, False),
+
+        # Intercepciones (15%) - volumen + impacto
+        ("obv_total_net_type_interception_per90", 0.08, False),
+        ("obv_total_net_third_middle_interception_per90", 0.07, False),
     ]
 
     CATS = {
         "Score_BoxToBox": BOX_TO_BOX,
         "Score_Desequilibrio": DESEQUILIBRIO,
         "Score_Organizacion": ORGANIZACION,
-        "Score_Auxilio": AUXILIO,
+        "Score_ContencionPresion": CONTENCION_PRESION,
     }
 
     # Pesos de categorías para Score_Overall
@@ -232,7 +231,7 @@ def run_interior_scoring(
         "Score_BoxToBox": 0.25,
         "Score_Desequilibrio": 0.30,
         "Score_Organizacion": 0.25,
-        "Score_Auxilio": 0.20,
+        "Score_ContencionPresion": 0.20,
     }
     
     # =========================
@@ -317,7 +316,7 @@ def run_interior_scoring(
         ("Flag_BoxToBox", "Score_BoxToBox"),
         ("Flag_Desequilibrio", "Score_Desequilibrio"),
         ("Flag_Organizacion", "Score_Organizacion"),
-        ("Flag_Auxilio", "Score_Auxilio"),
+        ("Flag_ContencionPresion", "Score_ContencionPresion"),
     ]:
         if score_col in base.columns:
             threshold = base[score_col].quantile(flag_q)
@@ -331,7 +330,7 @@ def run_interior_scoring(
         if r.get("Flag_BoxToBox", False): t.append("Box to Box")
         if r.get("Flag_Desequilibrio", False): t.append("Desequilibrantes")
         if r.get("Flag_Organizacion", False): t.append("Organizadores")
-        if r.get("Flag_Auxilio", False): t.append("Equilibrio")
+        if r.get("Flag_ContencionPresion", False): t.append("Contención/Presión")
         return " | ".join(t) if t else "Balanceados"
     
     base["Flags"] = base.apply(tags, axis=1)
@@ -341,7 +340,7 @@ def run_interior_scoring(
         "Box to Box": base["Flag_BoxToBox"].sum(),
         "Desequilibrantes": base["Flag_Desequilibrio"].sum(),
         "Organizadores": base["Flag_Organizacion"].sum(),
-        "Equilibrio": base["Flag_Auxilio"].sum(),
+        "Defensivos": base["Flag_ContencionPresion"].sum(),
     }
     
     print("\n📈 Distribución de flags:")
@@ -355,9 +354,9 @@ def run_interior_scoring(
     cols = [
         "player_id", "player_name", "team_name", "matches", "minutes",
         "primary_position", "primary_position_share",
-        "Score_BoxToBox", "Score_Desequilibrio", "Score_Organizacion", "Score_Auxilio",
+        "Score_BoxToBox", "Score_Desequilibrio", "Score_Organizacion", "Score_ContencionPresion",
         "Score_Overall",
-        "Flag_BoxToBox", "Flag_Desequilibrio", "Flag_Organizacion", "Flag_Auxilio",
+        "Flag_BoxToBox", "Flag_Desequilibrio", "Flag_Organizacion", "Flag_ContencionPresion",
         "Flags",
     ]
     cols = [c for c in cols if c in base.columns]

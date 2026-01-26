@@ -28,12 +28,12 @@ POSITION_MAP = {
     "Right Defensive Midfield": "Volante",
 
     # INTERIORES / MEDIAPUNTAS
-    "Left Center Midfield": "Interior",
-    "Right Center Midfield": "Interior",
-    "Center Midfield": "Interior",
-    "Center Attacking Midfield":"Interior",
-    "Left Attacking Midfield":"Interior",
-    "Right Attacking Midfield":"Interior",
+    "Left Center Midfield": "Interior/Mediapunta",
+    "Right Center Midfield": "Interior/Mediapunta",
+    "Center Midfield": "Interior/Mediapunta",
+    "Center Attacking Midfield":"Interior/Mediapunta",
+    "Left Attacking Midfield":"Interior/Mediapunta",
+    "Right Attacking Midfield":"Interior/Mediapunta",
 
     # EXTREMOS
     "Left Wing": "Extremo",
