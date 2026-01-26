@@ -16,7 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from positions_config import normalize_group, filter_by_position_group
+from positions_config import normalize_group, sb_positions_for
 
 # =========================
 # HELPERS
@@ -111,9 +111,14 @@ def run_extremos_scoring(
     # --- Filtrar por posición ---
     print(f"\n🔍 Filtrando por posición: {position_group}")
     pos_group = normalize_group(position_group)
+    pos_set = set(sb_positions_for(pos_group))
 
-    # si tu función admite col=..., mejor explícito
-    base = filter_by_position_group(base, pos_group, col="primary_position")
+    pos_col = "primary_position"
+    if pos_col not in base.columns:
+        raise ValueError(f"No existe '{pos_col}' en el dataset. No puedo filtrar por posición.")
+
+    base[pos_col] = base[pos_col].astype(str)
+    base = base[base[pos_col].isin(pos_set)].copy()
 
     print(f"✓ Jugadores filtrados por positions_config ({pos_group}): {len(base):,}")
 
