@@ -679,6 +679,50 @@ else:
 
 print(f"\nMétricas a discriminar (columnas): {metrics_to_discriminate}")
 
+print("\n" + "="*70)
+print("CALCULANDO EXTRA EXTREMOS: DRIBBLE_COMPLETE y CROSSES_COMPLETED")
+print("="*70)
+
+# --- 1) Dribbles completos (type=Dribble, dribble_outcome=Complete) ---
+if "dribble_outcome" in df_all.columns:
+    m_dr = df_all["type"].astype(str).eq("Dribble")
+    dr_out = df_all.loc[m_dr, "dribble_outcome"].apply(get_value_from_column).astype(str).str.lower()
+    m_ok = dr_out.str.contains("complete", na=False)
+
+    dribble_complete = (
+        df_all.loc[m_dr & m_ok]
+        .groupby("pid")
+        .size()
+        .reset_index(name="dribble_complete")
+        .rename(columns={"pid": "player_id"})
+    )
+else:
+    print("⚠️ No existe columna 'dribble_outcome'. dribble_complete = 0")
+    dribble_complete = pd.DataFrame(columns=["player_id", "dribble_complete"])
+
+# --- 2) Crosses completados (type=Pass, pass_cross==True, pass completado) ---
+if "pass_cross" in df_all.columns and "pass_outcome" in df_all.columns:
+    m_ps = df_all["type"].astype(str).eq("Pass")
+
+    # pass_cross suele quedar 0/1 por la conversión de booleanos (sección 4)
+    cross_flag = pd.to_numeric(df_all.loc[m_ps, "pass_cross"], errors="coerce").fillna(0) == 1
+
+    # completado: pass_outcome vacío / NaN
+    po_clean = df_all.loc[m_ps, "pass_outcome"].apply(get_value_from_column)
+    is_complete = po_clean.isna() | (po_clean.astype(str).str.strip() == "") | (po_clean.astype(str).str.lower() == "none")
+
+    crosses_completed = (
+        df_all.loc[m_ps & cross_flag & is_complete]
+        .groupby("pid")
+        .size()
+        .reset_index(name="crosses_completed")
+        .rename(columns={"pid": "player_id"})
+    )
+else:
+    print("⚠️ Falta 'pass_cross' o 'pass_outcome'. crosses_completed = 0")
+    crosses_completed = pd.DataFrame(columns=["player_id", "crosses_completed"])
+
+
 # ============= 5-SPECIAL) CALCULAR PASS/CARRY INTO FINAL THIRD =============
 print("\n" + "="*70)
 print("CALCULANDO PASS Y CARRY INTO FINAL THIRD")
@@ -1008,6 +1052,20 @@ if ENABLE_TURNOVER_ANALYSIS and 'turnover_counts' in locals():
     num_cols.extend(turnover_cols)
 
 print(f"Jugadores en player_sums: {len(player_sums):,}")
+
+# --- Merge extras extremos ---
+player_sums = player_sums.merge(dribble_complete, on="player_id", how="left")
+player_sums = player_sums.merge(crosses_completed, on="player_id", how="left")
+
+player_sums["dribble_complete"] = pd.to_numeric(player_sums["dribble_complete"], errors="coerce").fillna(0)
+player_sums["crosses_completed"] = pd.to_numeric(player_sums["crosses_completed"], errors="coerce").fillna(0)
+
+# Importante: sumar a num_cols para que se creen *_per90 en la sección 7
+for c in ["dribble_complete", "crosses_completed"]:
+    if c not in num_cols:
+        num_cols.append(c)
+
+print("✓ Extras extremos integrados: dribble_complete, crosses_completed")
 
 # ============= 5D) MERGE DE TODAS LAS DISCRIMINACIONES =============
 print("\n" + "="*70)
