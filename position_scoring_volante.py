@@ -152,24 +152,28 @@ def run_volante_scoring(
     # --- POSESIÓN (sostenimiento) ---
     POSESION = [
         # Volumen de participación
-        ("complete_passes_per90",                  0.30, False),
+        ("complete_passes_per90",                  0.20, False),
 
         # Sostener bajo presión (clave para volante central)
-        ("completed_passes_under_pressure_per90",  0.25, False),
+        ("completed_passes_under_pressure_per90",  0.30, False),
 
         # Cuidado del balón (invertido)
-        ("total_turnovers_per90",                  0.25, True),
+        ("total_turnovers_per90",                  0.20, True),
 
         # Calidad / valor del pase
-        ("obv_total_net_type_pass_per90",           0.20, False),
+        ("obv_total_net_type_pass_per90",           0.30, False),
     ]
 
     # --- PROGRESIÓN ---
     PROGRESION = [
-        ("pass_into_final_third_per90",  0.20, False),
-        ("carry_into_final_third_per90", 0.15, False),
-        ("obv_total_net_type_pass_per90",0.45, False),
+        # Progresión territorial
+        ("pass_into_final_third_per90",   0.20, False),
+        ("carry_into_final_third_per90",  0.20, False),
         ("obv_total_net_type_carry_per90",0.20, False),
+
+        # Tipos de pase que rompen estructuras
+        ("pass_switch_per90",             0.20, False),
+        ("pass_through_ball_per90",       0.20, False)
     ]
 
     # --- TERRITORIALES (control defensivo / territorialidad) ---
@@ -190,20 +194,18 @@ def run_volante_scoring(
 
     # --- CONTENCIÓN (acción defensiva tipo zagueros) ---
     CONTENCION = [
-        # Tackles: volumen + impacto (40%)
-        ("duel_tackle_per90",                    0.20, False),
-        ("obv_total_net_duel_type_tackle_per90", 0.20, False),
+        # Tackles: volumen + impacto (45%)
+        ("duel_tackle_per90",                    0.22, False),
+        ("obv_total_net_duel_type_tackle_per90", 0.23, False),
 
-        # Intercepciones: lectura + valor (35%)
-        ("interception_success_rate",            0.15, False),
-        ("obv_total_net_type_interception_per90",0.20, False),
+        # Intercepciones: lectura + valor (40%)
+        ("interception_success_rate",             0.17, False),
+        ("obv_total_net_type_interception_per90", 0.23, False),
 
         # Protección de zona (15%)
         ("n_events_third_defensive_interception_per90", 0.15, False),
-
-        # Ser superado (10%) → invertido
-        ("dribbled_past_per90",                  0.10, True),
     ]
+
 
     CATS = {
         "Score_Posesion": POSESION,
