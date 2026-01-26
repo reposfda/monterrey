@@ -1604,6 +1604,39 @@ else:
 
 print(f"\nTotal métricas xG por shot: {len(xg_per_shot_metrics)}")
 
+# =========================
+# GOLES (shots con outcome = Goal)
+# =========================
+# Nota: usamos el dataframe de shots (shots_df) que ya está creado.
+# En StatsBomb, el outcome suele estar en 'shot_outcome' (dict/string).
+if not shots_df.empty and "shot_outcome" in shots_df.columns:
+    # limpiar outcome a string
+    shot_out = shots_df["shot_outcome"].apply(get_value_from_column).astype(str).str.lower()
+
+    # goal (robusto a mayúsculas/minúsculas)
+    goals_df = shots_df[shot_out.eq("goal")].copy()
+
+    goals_count = (
+        goals_df.groupby("pid")
+        .size()
+        .reset_index(name="goals")
+        .rename(columns={"pid": "player_id"})
+    )
+
+    # merge con player_sums
+    player_sums = player_sums.merge(goals_count, on="player_id", how="left")
+    player_sums["goals"] = player_sums["goals"].fillna(0)
+
+    print(f"✓ Goles contados desde shots: {int(player_sums['goals'].sum()):,} total")
+    print(f"✓ Jugadores con goles: {(player_sums['goals'] > 0).sum():,}")
+else:
+    player_sums["goals"] = 0
+    if shots_df.empty:
+        print("⚠️  No hay shots para contar goles")
+    else:
+        print("⚠️  Columna 'shot_outcome' no encontrada. goals=0")
+
+
 # ============= 10) CALCULAR SHOT TOUCH % Y TOQUES EN ÁREA =============
 print("\n" + "="*70)
 print("CALCULANDO SHOT TOUCH % Y TOQUES EN ÁREA RIVAL")
@@ -1738,7 +1771,7 @@ print("\n--- Normalizando métricas de shots y toques per90 ---")
 
 shots_touches_per90 = []
 
-for metric in ["total_shots", "total_touches", "touches_in_opp_box", "complete_passes"]:
+for metric in ["total_shots", "goals", "total_touches", "touches_in_opp_box", "complete_passes"]:
     if metric in player_sums.columns:
         player_sums[metric] = pd.to_numeric(player_sums[metric], errors="coerce")
         player_sums[f"{metric}_per90"] = np.where(
