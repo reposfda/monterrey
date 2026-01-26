@@ -149,9 +149,9 @@ def run_interior_scoring(
     # --- 1. BOX TO BOX (presencia en ambas áreas) ---
     BOX_TO_BOX = [
         # Recuperaciones por tercio (30%)
-        ("n_events_third_defensive_ball_recovery_per90", 0.08, False),
+        ("n_events_third_defensive_ball_recovery_per90", 0.11, False),
         ("n_events_third_middle_ball_recovery_per90",    0.14, False),
-        ("n_events_third_attacking_ball_recovery_per90", 0.08, False),
+        ("n_events_third_attacking_ball_recovery_per90", 0.11, False),
 
         # Duelos por tercio (30%)
         ("n_events_third_defensive_duel_per90", 0.08, False),
@@ -164,7 +164,7 @@ def run_interior_scoring(
         ("shot_touch_pct",               0.05, False),
 
         # Volumen general de participación (15%)
-        ("total_touches_per90", 0.15, False),
+        ("total_touches_per90", 0.09, False),
     ]
 
     # --- 2. DESEQUILIBRIO / CREATIVOS (ruptura individual) ---
