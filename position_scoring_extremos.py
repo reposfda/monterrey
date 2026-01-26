@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from positions_config import normalize_group, sb_positions_for
+from extremos_obv_lanes_builder import build_all_seasons
 
 # =========================
 # HELPERS
@@ -95,6 +96,29 @@ def run_extremos_scoring(
     print("=" * 70)
     print(f"SCORING DE {position_group.upper()}")
     print("=" * 70)
+
+    # =========================
+    # BUILD ROLE LANES (si no existe)
+    # =========================
+    if role_lanes_csv is not None and (not role_lanes_csv.exists()):
+        print("\n🛠️  Generando role_lanes de extremos (OBV carriles)...")
+
+        PATHS = {
+                "2024-25": Path("outputs/events_2024_2025.csv"),
+                "2025-26": Path("outputs/events_2025_2026.csv"),
+            }
+
+        build_all_seasons(
+            PATHS=PATHS,
+            out_dir=str(role_lanes_csv.parent),   # <- string
+            minutes_threshold=min_minutes,
+            min_share_role=0.60,
+        )
+
+        print("✓ role_lanes generado correctamente")
+    else:
+        print("✓ role_lanes existente, se utiliza el CSV guardado")
+
 
     # --- Cargar per90 ---
     print(f"\n📂 Cargando: {per90_csv}")

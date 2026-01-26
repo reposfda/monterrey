@@ -341,3 +341,16 @@ def build_all_seasons(PATHS: dict, out_dir: str, **kwargs) -> pd.DataFrame:
         return df_all
 
     return pd.DataFrame()
+
+if __name__ == "__main__":
+
+    PATHS = {"data/events_2024_2025.csv"}
+
+    OUT_DIR = "/outputs"
+
+    build_all_seasons(
+        PATHS=PATHS,
+        out_dir=OUT_DIR,
+        minutes_threshold=450,
+        min_share_role=0.60,
+    )
