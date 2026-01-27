@@ -397,7 +397,7 @@ if __name__ == "__main__":
     scores = run_interior_scoring(
         per90_csv=per90_csv,
         out_csv=out_csv,
-        position_group="Interior",
+        position_group="Interior/Mediapunta ",
         min_minutes=450,
         min_matches=3,
         flag_q=0.75,  # Top 25%
