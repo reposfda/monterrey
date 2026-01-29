@@ -8,6 +8,19 @@ from datetime import datetime
 # Importar funciones de turnover
 from turnover_scoring import compute_player_turnovers, classify_turnover
 
+# Importar módulo de análisis de carriles OBV
+try:
+    from obv_lanes_builder import calculate_lane_bias_metrics
+    OBV_LANES_AVAILABLE = True
+    print("✓ Módulo obv_lanes_builder importado correctamente")
+except ImportError as e:
+    print(f"⚠️  Módulo obv_lanes_builder no disponible: {e}")
+    print("   Asegúrate de que obv_lanes_builder.py está en el mismo directorio")
+    OBV_LANES_AVAILABLE = False
+except Exception as e:
+    print(f"❌ Error importando obv_lanes_builder: {e}")
+    OBV_LANES_AVAILABLE = False
+
 # ============= CONFIG =============
 PATH = "data/events_2024_2025.csv"
 season = PATH.split('_', 1)[1].replace('.csv', '')
@@ -679,50 +692,6 @@ else:
 
 print(f"\nMétricas a discriminar (columnas): {metrics_to_discriminate}")
 
-print("\n" + "="*70)
-print("CALCULANDO EXTRA EXTREMOS: DRIBBLE_COMPLETE y CROSSES_COMPLETED")
-print("="*70)
-
-# --- 1) Dribbles completos (type=Dribble, dribble_outcome=Complete) ---
-if "dribble_outcome" in df_all.columns:
-    m_dr = df_all["type"].astype(str).eq("Dribble")
-    dr_out = df_all.loc[m_dr, "dribble_outcome"].apply(get_value_from_column).astype(str).str.lower()
-    m_ok = dr_out.str.contains("complete", na=False)
-
-    dribble_complete = (
-        df_all.loc[m_dr & m_ok]
-        .groupby("pid")
-        .size()
-        .reset_index(name="dribble_complete")
-        .rename(columns={"pid": "player_id"})
-    )
-else:
-    print("⚠️ No existe columna 'dribble_outcome'. dribble_complete = 0")
-    dribble_complete = pd.DataFrame(columns=["player_id", "dribble_complete"])
-
-# --- 2) Crosses completados (type=Pass, pass_cross==True, pass completado) ---
-if "pass_cross" in df_all.columns and "pass_outcome" in df_all.columns:
-    m_ps = df_all["type"].astype(str).eq("Pass")
-
-    # pass_cross suele quedar 0/1 por la conversión de booleanos (sección 4)
-    cross_flag = pd.to_numeric(df_all.loc[m_ps, "pass_cross"], errors="coerce").fillna(0) == 1
-
-    # completado: pass_outcome vacío / NaN
-    po_clean = df_all.loc[m_ps, "pass_outcome"].apply(get_value_from_column)
-    is_complete = po_clean.isna() | (po_clean.astype(str).str.strip() == "") | (po_clean.astype(str).str.lower() == "none")
-
-    crosses_completed = (
-        df_all.loc[m_ps & cross_flag & is_complete]
-        .groupby("pid")
-        .size()
-        .reset_index(name="crosses_completed")
-        .rename(columns={"pid": "player_id"})
-    )
-else:
-    print("⚠️ Falta 'pass_cross' o 'pass_outcome'. crosses_completed = 0")
-    crosses_completed = pd.DataFrame(columns=["player_id", "crosses_completed"])
-
-
 # ============= 5-SPECIAL) CALCULAR PASS/CARRY INTO FINAL THIRD =============
 print("\n" + "="*70)
 print("CALCULANDO PASS Y CARRY INTO FINAL THIRD")
@@ -1053,20 +1022,6 @@ if ENABLE_TURNOVER_ANALYSIS and 'turnover_counts' in locals():
 
 print(f"Jugadores en player_sums: {len(player_sums):,}")
 
-# --- Merge extras extremos ---
-player_sums = player_sums.merge(dribble_complete, on="player_id", how="left")
-player_sums = player_sums.merge(crosses_completed, on="player_id", how="left")
-
-player_sums["dribble_complete"] = pd.to_numeric(player_sums["dribble_complete"], errors="coerce").fillna(0)
-player_sums["crosses_completed"] = pd.to_numeric(player_sums["crosses_completed"], errors="coerce").fillna(0)
-
-# Importante: sumar a num_cols para que se creen *_per90 en la sección 7
-for c in ["dribble_complete", "crosses_completed"]:
-    if c not in num_cols:
-        num_cols.append(c)
-
-print("✓ Extras extremos integrados: dribble_complete, crosses_completed")
-
 # ============= 5D) MERGE DE TODAS LAS DISCRIMINACIONES =============
 print("\n" + "="*70)
 print("COMBINANDO TODAS LAS MÉTRICAS DISCRIMINADAS")
@@ -1344,41 +1299,6 @@ if not passes_total_df.empty:
         player_sums["complete_passes"] / player_sums["total_passes"],
         np.nan
     )
-
-    # ============================
-    # COMPLETED PASSES UNDER PRESSURE (count)
-    # ============================
-    # Definición:
-    # Pass AND under_pressure==True AND pass_outcome is NaN (completado)
-    if "under_pressure" in passes_total_df.columns:
-        passes_up_completed_df = passes_total_df[
-            (passes_total_df["under_pressure"] == True) &
-            (passes_total_df["pass_outcome"].isna())
-        ].copy()
-
-        if not passes_up_completed_df.empty:
-            up_completed = (
-                passes_up_completed_df.groupby("pid")
-                .size()
-                .reset_index(name="completed_passes_under_pressure")
-                .rename(columns={"pid": "player_id"})
-            )
-            player_sums = player_sums.merge(up_completed, on="player_id", how="left")
-            player_sums["completed_passes_under_pressure"] = player_sums["completed_passes_under_pressure"].fillna(0)
-        else:
-            player_sums["completed_passes_under_pressure"] = 0
-
-        # Importante: agregar a num_cols para que se calcule _per90 en la sección 7
-        if "completed_passes_under_pressure" not in num_cols:
-            num_cols.append("completed_passes_under_pressure")
-
-        print("✓ completed_passes_under_pressure calculado")
-        print(f"  Total (liga): {int(player_sums['completed_passes_under_pressure'].sum()):,}")
-        print(f"  Jugadores con >=1: {(player_sums['completed_passes_under_pressure'] > 0).sum():,}")
-    else:
-        print("⚠️  No existe columna 'under_pressure' en df_all. Se setea completed_passes_under_pressure=0")
-        player_sums["completed_passes_under_pressure"] = 0
-
     
     percentage_metrics.append("pass_completion_rate")
     
@@ -1604,39 +1524,6 @@ else:
 
 print(f"\nTotal métricas xG por shot: {len(xg_per_shot_metrics)}")
 
-# =========================
-# GOLES (shots con outcome = Goal)
-# =========================
-# Nota: usamos el dataframe de shots (shots_df) que ya está creado.
-# En StatsBomb, el outcome suele estar en 'shot_outcome' (dict/string).
-if not shots_df.empty and "shot_outcome" in shots_df.columns:
-    # limpiar outcome a string
-    shot_out = shots_df["shot_outcome"].apply(get_value_from_column).astype(str).str.lower()
-
-    # goal (robusto a mayúsculas/minúsculas)
-    goals_df = shots_df[shot_out.eq("goal")].copy()
-
-    goals_count = (
-        goals_df.groupby("pid")
-        .size()
-        .reset_index(name="goals")
-        .rename(columns={"pid": "player_id"})
-    )
-
-    # merge con player_sums
-    player_sums = player_sums.merge(goals_count, on="player_id", how="left")
-    player_sums["goals"] = player_sums["goals"].fillna(0)
-
-    print(f"✓ Goles contados desde shots: {int(player_sums['goals'].sum()):,} total")
-    print(f"✓ Jugadores con goles: {(player_sums['goals'] > 0).sum():,}")
-else:
-    player_sums["goals"] = 0
-    if shots_df.empty:
-        print("⚠️  No hay shots para contar goles")
-    else:
-        print("⚠️  Columna 'shot_outcome' no encontrada. goals=0")
-
-
 # ============= 10) CALCULAR SHOT TOUCH % Y TOQUES EN ÁREA =============
 print("\n" + "="*70)
 print("CALCULANDO SHOT TOUCH % Y TOQUES EN ÁREA RIVAL")
@@ -1771,7 +1658,7 @@ print("\n--- Normalizando métricas de shots y toques per90 ---")
 
 shots_touches_per90 = []
 
-for metric in ["total_shots", "goals", "total_touches", "touches_in_opp_box", "complete_passes"]:
+for metric in ["total_shots", "total_touches", "touches_in_opp_box", "complete_passes"]:
     if metric in player_sums.columns:
         player_sums[metric] = pd.to_numeric(player_sums[metric], errors="coerce")
         player_sums[f"{metric}_per90"] = np.where(
@@ -1838,6 +1725,86 @@ if missing_cols:
 
 final_df = player_sums[final_cols].copy()
 final_df = final_df.sort_values("total_minutes", ascending=False)
+
+# ============= 11B) MÉTRICAS DE CARRILES OBV =============
+if OBV_LANES_AVAILABLE:
+    print("\n" + "="*70)
+    print("CALCULANDO MÉTRICAS DE CARRILES OBV")
+    print("="*70)
+    
+    try:
+        # Verificar que df_all existe y tiene las columnas necesarias
+        if 'df_all' not in locals() and 'df_all' not in globals():
+            print("  ⚠️  df_all no existe. Usando df en su lugar.")
+            df_for_lanes = df
+        else:
+            df_for_lanes = df_all
+        
+        # Verificar columnas necesarias
+        required_cols = ['pid', 'type', 'y', 'pass_end_location', 'obv_total_net']
+        missing = [c for c in required_cols if c not in df_for_lanes.columns]
+        
+        if missing:
+            print(f"  ⚠️  Columnas faltantes en df_for_lanes: {missing}")
+            if 'pid' in missing:
+                print(f"  ⚠️  Creando columna 'pid' en df_for_lanes...")
+                df_for_lanes = df_for_lanes.copy()
+                df_for_lanes["pid"] = get_player_id_series(df_for_lanes).astype("Int64")
+        
+        print(f"  DataFrame para carriles: {len(df_for_lanes):,} eventos")
+        print(f"  Columnas disponibles: pid={('pid' in df_for_lanes.columns)}, type={('type' in df_for_lanes.columns)}")
+        
+        # Obtener ancho de cancha (ya inferido)
+        _, pitch_width = infer_pitch_dimensions(df)
+        
+        print(f"  Columnas en final_df ANTES del merge: {len(final_df.columns)}")
+        print(f"  Filas en final_df: {len(final_df)}")
+        
+        # Calcular métricas de carriles para TODOS los jugadores
+        lanes_metrics = calculate_lane_bias_metrics(
+            df=df_for_lanes,                                # df_all o df con 'pid'
+            player_minutes_summary=player_minutes_summary,  # Ya calculado
+            pitch_width=pitch_width,                        # Ya inferido
+            extract_x_y_func=extract_x_y_from_location,    # Función helper
+            min_passes=50,                                  # Mínimo de pases para calcular bias
+        )
+        
+        if not lanes_metrics.empty:
+            print(f"  Filas en lanes_metrics: {len(lanes_metrics)}")
+            print(f"  Columnas en lanes_metrics: {list(lanes_metrics.columns)}")
+            
+            # Verificar si hay player_id en común
+            common_ids = set(final_df["player_id"]) & set(lanes_metrics["player_id"])
+            print(f"  Player IDs en común: {len(common_ids)}")
+            
+            # Merge con final_df
+            final_df = final_df.merge(
+                lanes_metrics,
+                on="player_id",
+                how="left"
+            )
+            
+            print(f"  Columnas en final_df DESPUÉS del merge: {len(final_df.columns)}")
+            print(f"✅ Métricas de carriles agregadas a final_df")
+            print(f"  Jugadores con lane_bias_index: {lanes_metrics['lane_bias_index'].notna().sum():,}")
+            print(f"  Columnas agregadas: {list(lanes_metrics.columns[1:])}")
+            
+            # Verificar que las columnas están en final_df
+            for col in lanes_metrics.columns[1:]:
+                if col in final_df.columns:
+                    non_null = final_df[col].notna().sum()
+                    print(f"    - {col}: {non_null} valores no nulos")
+                else:
+                    print(f"    ⚠️  {col}: NO ESTÁ en final_df")
+        else:
+            print(f"\n⚠️  No se generaron métricas de carriles (lanes_metrics está vacío)")
+    
+    except Exception as e:
+        print(f"\n❌ Error calculando métricas de carriles: {e}")
+        import traceback
+        traceback.print_exc()
+else:
+    print("\n⚠️  Módulo obv_lanes_builder no disponible. Métricas de carriles omitidas.")
 
 # ============= 12) EXPORTS CON TEMPORADA EN NOMBRE =============
 print("\n" + "="*70)
