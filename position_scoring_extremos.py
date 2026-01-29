@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 """
 Sistema de Scoring para Extremos
-- Misma lógica que position_scoring_interior.py:
-  * pct_rank_0_100 por métrica
-  * score por categoría = wavg(percentiles, pesos)
-  * score overall = wavg(scores categorías, pesos)
-  * flags top (1-flag_q)
+Versión simplificada - Solo usa CSV per90 (sin pool_builder, sin cálculo de métricas)
+
+Categorías:
+1. Compromiso Defensivo - Presión y recuperaciones altas
+2. Desequilibrio - Dribble, carry, asistencias
+3. Finalización - xG, shots, toques en área
+4. Zona de Influencia - OBV desde exterior vs interior (lane bias)
 
 Requiere:
-- per90_csv: all_players_per90_all.csv (o equivalente)
-- role_lanes_csv: output del builder extremos OBV carriles (opcional pero recomendado)
+- all_players_complete_{season}.csv (output del script principal con métricas de carriles)
+- positions_config.py (módulo de configuración)
 """
 
 from __future__ import annotations
@@ -17,22 +19,37 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from positions_config import normalize_group, sb_positions_for
-from extremos_obv_lanes_builder import build_all_seasons
 
-# =========================
-# HELPERS
-# =========================
+
+# ============= HELPERS =============
 def safe_numeric(s: pd.Series) -> pd.Series:
+    """Convierte a numérico de forma segura"""
     return pd.to_numeric(s, errors="coerce")
 
+
 def pct_rank_0_100(s: pd.Series) -> pd.Series:
+    """
+    Calcula percentil de 0 a 100.
+    Valores más altos = mejor posición (mayor percentil).
+    """
     x = s.copy()
     m = x.notna()
     out = pd.Series(np.nan, index=x.index, dtype="float64")
     out.loc[m] = x.loc[m].rank(pct=True, method="average") * 100.0
     return out
 
+
 def wavg(df: pd.DataFrame, cols_weights):
+    """
+    Calcula promedio ponderado ignorando NaN.
+    
+    Args:
+        df: DataFrame con las columnas
+        cols_weights: Lista de tuplas (columna, peso)
+        
+    Returns:
+        Serie con el promedio ponderado
+    """
     cols = [c for c, _ in cols_weights if c in df.columns]
     if not cols:
         return pd.Series(np.nan, index=df.index)
@@ -44,257 +61,247 @@ def wavg(df: pd.DataFrame, cols_weights):
     den = np.nansum((~np.isnan(mat)) * w, axis=1)
     return pd.Series(np.where(den > 0, num / den, np.nan), index=df.index)
 
-def _merge_role_lanes(base: pd.DataFrame, role_lanes_csv: Path | None) -> pd.DataFrame:
+
+def filter_by_position_group(df: pd.DataFrame, group: str) -> pd.DataFrame:
     """
-    Mergea las métricas del builder de role_lanes (OBV carriles) por player_id (+ season si aplica)
-    Espera columnas tipo:
-      player_id, _season (opcional), obv_total_pass_per90, obv_from_ext_per90, obv_from_int_per90, lane_bias_origin_index, etc.
+    Filtra jugadores por grupo de posición usando primary_position.
+    
+    Args:
+        df: DataFrame con columna 'primary_position'
+        group: Nombre del grupo (ej: "Extremo")
+        
+    Returns:
+        DataFrame filtrado
     """
-    if role_lanes_csv is None:
-        return base
+    group = normalize_group(group)  # Valida el grupo
+    valid_positions = sb_positions_for(group)
+    
+    # Filtrar por primary_position
+    mask = df["primary_position"].isin(valid_positions)
+    
+    return df[mask].copy()
 
-    rl = pd.read_csv(role_lanes_csv, low_memory=False)
-    # normalizar tipos
-    if "player_id" in rl.columns:
-        rl["player_id"] = pd.to_numeric(rl["player_id"], errors="coerce")
-    if "player_id" in base.columns:
-        base["player_id"] = pd.to_numeric(base["player_id"], errors="coerce")
-
-    # merge por season si existe en ambos
-    if "_season" in rl.columns and "_season" in base.columns:
-        keep = [c for c in rl.columns if c not in ["player_name"]]
-        base = base.merge(rl[keep], on=["player_id", "_season"], how="left")
-    else:
-        keep = [c for c in rl.columns if c not in ["player_name", "_season"]]
-        base = base.merge(rl[keep], on="player_id", how="left")
-
-    return base
 
 def lane_tag(r):
-    v = r.get("lane_bias_origin_index", np.nan)
+    """Genera tag descriptivo del perfil de carril"""
+    v = r.get("lane_bias_index", np.nan)
     if pd.isna(v):
         return "Sin dato"
+    
     side = "Interior" if v >= 0 else "Exterior"
-    strength = r.get("lane_profile_strength", None)
-    if pd.isna(strength):
-        return side
+    
+    # Clasificar fuerza del sesgo
+    abs_v = abs(v)
+    if abs_v < 0.15:
+        strength = "Mixto"
+    elif abs_v < 0.35:
+        strength = "Moderado"
+    else:
+        strength = "Marcado"
+    
     return f"{side} ({strength})"
 
 
-# =========================
-# SCORING PRINCIPAL
-# =========================
-def run_extremos_scoring(
+# ============= SCORING PRINCIPAL =============
+def run_extremo_scoring(
     per90_csv: Path,
     out_csv: Path,
-    role_lanes_csv: Path | None = None,
-    position_group: str = "Extremo",   # placeholder: si luego lo conectás a positions_config
+    position_group: str = "Extremo",
     min_minutes: int = 450,
     min_matches: int = 3,
     flag_q: float = 0.75,
 ):
-    print("=" * 70)
+    """
+    Calcula scoring de extremos usando solo el CSV per90.
+    
+    Args:
+        per90_csv: Path al archivo all_players_complete.csv
+        out_csv: Path de salida para scores
+        position_group: Grupo de posición ("Extremo")
+        min_minutes: Minutos mínimos requeridos
+        min_matches: Partidos mínimos requeridos
+        flag_q: Cuantil para flags (0.75 = top 25%)
+        
+    Returns:
+        DataFrame con los scores calculados
+    """
+    
+    print("="*70)
     print(f"SCORING DE {position_group.upper()}")
-    print("=" * 70)
-
-    # =========================
-    # BUILD ROLE LANES (si no existe)
-    # =========================
-    if role_lanes_csv is not None and (not role_lanes_csv.exists()):
-        print("\n🛠️  Generando role_lanes de extremos (OBV carriles)...")
-
-        PATHS = {
-                "2024-25": Path("outputs/events_2024_2025.csv"),
-                "2025-26": Path("outputs/events_2025_2026.csv"),
-            }
-
-        build_all_seasons(
-            PATHS=PATHS,
-            out_dir=str(role_lanes_csv.parent),   # <- string
-            minutes_threshold=min_minutes,
-            min_share_role=0.60,
-        )
-
-        print("✓ role_lanes generado correctamente")
-    else:
-        print("✓ role_lanes existente, se utiliza el CSV guardado")
-
-
-    # --- Cargar per90 ---
+    print("="*70)
+    
+    # --- Cargar datos ---
     print(f"\n📂 Cargando: {per90_csv}")
-    base = pd.read_csv(per90_csv, low_memory=False, encoding="latin1")
-    print(f"✓ Total jugadores en archivo: {len(base):,}")
-
-    # --- Renombres compatibles (misma idea que interior) ---
+    per90 = pd.read_csv(per90_csv, low_memory=False, encoding='latin1')
+    print(f"✓ Total jugadores en archivo: {len(per90):,}")
+    
+    # --- Filtrar por posición ---
+    print(f"\n🔍 Filtrando por posición: {position_group}")
+    base = filter_by_position_group(per90, position_group)
+    print(f"✓ Jugadores en posición {position_group}: {len(base):,}")
+    
+    # --- Filtrar por minutos y partidos ---
+    print(f"\n⏱️  Aplicando filtros:")
+    print(f"  - Minutos mínimos: {min_minutes}")
+    print(f"  - Partidos mínimos: {min_matches}")
+    
+    base = base[base["total_minutes"] >= min_minutes].copy()
+    base = base[base["matches_played"] >= min_matches].copy()
+    
+    print(f"✓ Jugadores después de filtros: {len(base):,}")
+    
+    if base.empty:
+        raise ValueError(f"No hay jugadores de {position_group} que cumplan los filtros.")
+    
+    # --- Renombrar columnas para compatibilidad ---
     base = base.rename(columns={
         "teams": "team_name",
         "matches_played": "matches",
         "total_minutes": "minutes",
     })
-
-    # --- Filtrar por posición ---
-    print(f"\n🔍 Filtrando por posición: {position_group}")
-    pos_group = normalize_group(position_group)
-    pos_set = set(sb_positions_for(pos_group))
-
-    pos_col = "primary_position"
-    if pos_col not in base.columns:
-        raise ValueError(f"No existe '{pos_col}' en el dataset. No puedo filtrar por posición.")
-
-    base[pos_col] = base[pos_col].astype(str)
-    base = base[base[pos_col].isin(pos_set)].copy()
-
-    print(f"✓ Jugadores filtrados por positions_config ({pos_group}): {len(base):,}")
-
-    # --- Filtros minutos/partidos ---
-    if "minutes" in base.columns:
-        base["minutes"] = safe_numeric(base["minutes"])
-        base = base[base["minutes"] >= min_minutes].copy()
-    if "matches" in base.columns:
-        base["matches"] = safe_numeric(base["matches"])
-        base = base[base["matches"] >= min_matches].copy()
-
-    print(f"✓ Jugadores después de filtros: {len(base):,}")
-    if base.empty:
-        raise ValueError("No hay extremos que cumplan los filtros.")
-
-    # --- Merge role_lanes (zona de influencia) ---
-    base = _merge_role_lanes(base, role_lanes_csv)
-
+    
     # =========================
-    # DEFINICIÓN DE CATEGORÍAS (primer borrador)
+    # DEFINICIÓN DE CATEGORÍAS
+    # =========================
     # Formato: (columna, peso, invertir?)
-    # =========================
-
-    # 1) COMPROMISO DEFENSIVO
+    # invertir=True para métricas donde menor es mejor
+    
+    # --- 1. COMPROMISO DEFENSIVO ---
     COMPROMISO_DEF = [
         ("n_events_third_attacking_pressure_per90", 0.20, False),
-        ("obv_total_net_third_attacking_pressure_per90", 0.25, False),
         ("counterpress_per90", 0.20, False),
         ("n_events_third_attacking_ball_recovery_per90", 0.15, False),
         ("obv_total_net_type_ball_recovery_per90", 0.20, False),
+        ("obv_total_net_type_interception_per90", 0.10, False),
+        ("pressure_per90", 0.15, False),
     ]
 
-    # 2) DESEQUILIBRIO
+    # --- 2. DESEQUILIBRIO ---
     DESEQUILIBRIO = [
         ("obv_total_net_type_dribble_per90", 0.18, False),
-        ("obv_total_net_type_carry_per90",   0.18, False),
-
-        ("dribble_complete_per90",           0.12, False),  # NUEVA
-        ("crosses_completed_per90",          0.10, False),  # NUEVA
-
-        ("obv_total_net_third_attacking_pass_cross_openplay_per90", 0.12, False),
-        ("pass_shot_assist_per90",           0.15, False),
-        ("pass_goal_assist_per90",           0.05, False),
-        ("obv_total_net_type_pass_per90",    0.10, False),
+        ("obv_total_net_type_carry_per90", 0.18, False),
+        ("carry_into_final_third_per90", 0.10, False),
+        ("pass_into_final_third_per90", 0.08, False),
+        ("pass_shot_assist_per90", 0.15, False),
+        ("pass_goal_assist_per90", 0.05, False),
+        ("xa_per90", 0.12, False),
+        ("obv_total_net_type_pass_per90", 0.14, False),
     ]
 
-    # 3) FINALIZACIÓN
+    # --- 3. FINALIZACIÓN ---
     FINALIZACION = [
-        ("shot_statsbomb_xg_per90",      0.35, False),
-        ("obv_total_net_type_shot_per90",0.25, False),
-        ("xg_per_shot",                  0.20, False),          # derivada
-        ("touches_in_opp_box_per90",     0.20, False),
+        ("shot_statsbomb_xg_per90", 0.35, False),
+        ("obv_total_net_type_shot_per90", 0.25, False),
+        ("xg_per_shot", 0.20, False),
+        ("touches_in_opp_box_per90", 0.20, False),
     ]
 
-    # 4) ZONA DE INFLUENCIA (role_lanes)
+    # --- 4. ZONA DE INFLUENCIA (métricas de carriles) ---
     ZONA_INFLUENCIA = [
-        ("obv_total_pass_per90", 0.55, False),
-        ("obv_from_ext_per90",   0.225, False),
-        ("obv_from_int_per90",   0.225, False),
+        ("obv_from_ext_per90", 0.35, False),  # OBV desde bandas
+        ("obv_from_int_per90", 0.35, False),  # OBV desde interior
+        ("obv_total_net_type_pass_per90", 0.30, False),  # OBV total de pases
     ]
 
     CATS = {
-        "Score_CompromisoDefensivo": COMPROMISO_DEF,
+        "Score_CompromisoDef": COMPROMISO_DEF,
         "Score_Desequilibrio": DESEQUILIBRIO,
         "Score_Finalizacion": FINALIZACION,
         "Score_ZonaInfluencia": ZONA_INFLUENCIA,
     }
 
-    # Pesos de categorías para Score_Overall (primer borrador)
+    # Pesos de categorías para Score_Overall
     CAT_W = {
-        "Score_CompromisoDefensivo": 0.20,
+        "Score_CompromisoDef": 0.20,
         "Score_Desequilibrio": 0.35,
         "Score_Finalizacion": 0.30,
         "Score_ZonaInfluencia": 0.15,
     }
-
+    
     # =========================
-    # MÉTRICAS DERIVADAS (mínimas)
+    # CALCULAR MÉTRICAS DERIVADAS SI ES NECESARIO
     # =========================
-    print("\n🔧 Calculando métricas derivadas...")
-
-    # xG/shot
+    print("\n🔧 Verificando métricas derivadas...")
+    
+    # xg_per_shot (ya debería estar calculado en main_analysis)
     if "xg_per_shot" not in base.columns:
-        xg = safe_numeric(base["shot_statsbomb_xg_per90"]) if "shot_statsbomb_xg_per90" in base.columns else np.nan
-        shots = safe_numeric(base["shots_per90"]) if "shots_per90" in base.columns else np.nan
-        if isinstance(xg, pd.Series) and isinstance(shots, pd.Series):
-            base["xg_per_shot"] = np.where(shots > 0, xg / shots, np.nan)
-            print("✓ xg_per_shot calculado (desde shot_statsbomb_xg_per90 / shots_per90)")
-        else:
-            base["xg_per_shot"] = np.nan
-
+        print("  ⚠️  xg_per_shot no encontrado, intentando calcular...")
+        if "shot_statsbomb_xg_per90" in base.columns and "total_shots_per90" in base.columns:
+            base["xg_per_shot"] = np.where(
+                base["total_shots_per90"] > 0,
+                base["shot_statsbomb_xg_per90"] / base["total_shots_per90"],
+                np.nan
+            )
+            print("  ✓ xg_per_shot calculado")
+    
+    # xa_per90 (debería venir del dataset)
+    if "xa_per90" not in base.columns:
+        print("  ⚠️  xa_per90 no encontrado en el dataset")
+    
     # =========================
-    # PERFIL DE INFLUENCIA (inside/outside) - SOLO DESCRIPTOR
+    # PERFIL DE INFLUENCIA (DESCRIPTIVO)
     # =========================
-    if "lane_bias_origin_index" not in base.columns:
-        base["lane_bias_origin_index"] = np.nan
-
-    base["lane_bias_origin_index"] = pd.to_numeric(base["lane_bias_origin_index"], errors="coerce")
-
-    base["lane_influence_side"] = np.where(
-        base["lane_bias_origin_index"].isna(),
-        "Sin dato",
-        np.where(base["lane_bias_origin_index"] >= 0, "Interior", "Exterior")
-    )
-
-    base["lane_bias_abs"] = base["lane_bias_origin_index"].abs()
-
-    base["lane_profile_strength"] = pd.cut(
-        base["lane_bias_abs"],
-        bins=[0.0, 0.15, 0.35, 1.01],
-        labels=["Mixto", "Moderado", "Marcado"],
-        include_lowest=True
-    )
-
-    base["Lane_Profile"] = base.apply(lane_tag, axis=1)
-
-
-
+    if "lane_bias_index" in base.columns:
+        print("\n🎯 Calculando perfil de influencia por carriles...")
+        
+        base["lane_bias_index"] = pd.to_numeric(base["lane_bias_index"], errors="coerce")
+        
+        base["lane_influence_side"] = np.where(
+            base["lane_bias_index"].isna(),
+            "Sin dato",
+            np.where(base["lane_bias_index"] >= 0, "Interior", "Exterior")
+        )
+        
+        base["Lane_Profile"] = base.apply(lane_tag, axis=1)
+        
+        # Estadísticas
+        has_bias = base["lane_bias_index"].notna().sum()
+        if has_bias > 0:
+            ext_count = (base["lane_influence_side"] == "Exterior").sum()
+            int_count = (base["lane_influence_side"] == "Interior").sum()
+            print(f"  ✓ Jugadores con perfil de carril: {has_bias}")
+            print(f"    - Perfil Exterior: {ext_count}")
+            print(f"    - Perfil Interior: {int_count}")
+    else:
+        print("\n⚠️  lane_bias_index no encontrado (métricas de carriles no disponibles)")
+        base["lane_influence_side"] = "Sin dato"
+        base["Lane_Profile"] = "Sin dato"
+    
     # =========================
-    # PREPARAR NUMÉRICAS + PERCENTILES
+    # CÁLCULO DE SCORES
     # =========================
-    print("\n🎯 Calculando percentiles y scores...")
-
-    # 1) Asegurar numéricas (solo columnas que existan)
+    print("\n🎯 Calculando scores...")
+    
+    # Convertir métricas a numérico
     all_metrics = []
-    for _, items in CATS.items():
+    for cat, items in CATS.items():
         for col, _, _ in items:
             all_metrics.append(col)
-
+    
     for col in set(all_metrics):
         if col in base.columns:
             base[col] = safe_numeric(base[col])
-
-    # 2) Percentiles por métrica (invirtiendo si aplica)
+    
+    # Percentiles por métrica
     missing_cols = []
     for cat, items in CATS.items():
         for col, _, inv in items:
             if col not in base.columns:
                 missing_cols.append(col)
                 continue
+            
+            # Invertir si es necesario (menor valor = mejor)
             x = -base[col] if inv else base[col]
             base[f"pct__{col}"] = pct_rank_0_100(x)
-
+    
     if missing_cols:
-        missing_cols = sorted(set(missing_cols))
-        print(f"\n⚠️  Columnas no encontradas (se ignoran): {len(missing_cols)}")
-        for c in missing_cols[:15]:
-            print(f"  - {c}")
-        if len(missing_cols) > 15:
-            print(f"  ... y {len(missing_cols) - 15} más")
-
-    # 3) Score por categoría (wavg de percentiles)
+        print(f"\n⚠️  Columnas no encontradas (serán ignoradas): {len(missing_cols)}")
+        for col in missing_cols[:10]:  # Mostrar solo las primeras 10
+            print(f"  - {col}")
+        if len(missing_cols) > 10:
+            print(f"  ... y {len(missing_cols) - 10} más")
+    
+    # Score por categoría (promedio ponderado de percentiles)
     for cat, items in CATS.items():
         pct_items = [(f"pct__{col}", w) for col, w, _ in items if f"pct__{col}" in base.columns]
         if pct_items:
@@ -302,8 +309,8 @@ def run_extremos_scoring(
         else:
             base[cat] = np.nan
             print(f"⚠️  No se pudo calcular {cat} (todas las columnas faltantes)")
-
-    # 4) Overall (wavg de categorías)
+    
+    # Overall (promedio ponderado de categorías)
     num = 0.0
     den = 0.0
     for c, w in CAT_W.items():
@@ -312,82 +319,110 @@ def run_extremos_scoring(
         valid = base[c].notna()
         num += base[c].fillna(0) * w * valid
         den += w * valid
+    
     base["Score_Overall"] = np.where(den > 0, num / den, np.nan)
-
+    
     print("✓ Scores calculados")
-
+    
     # =========================
-    # FLAGS
+    # FLAGS Y TAGS
     # =========================
     print(f"\n🏷️  Asignando flags (top {int((1-flag_q)*100)}%)...")
-
+    
+    # Flags basados en cuantil
     for flag_name, score_col in [
-        ("Flag_CompromisoDef", "Score_CompromisoDefensivo"),
+        ("Flag_CompromisoDef", "Score_CompromisoDef"),
         ("Flag_Desequilibrio", "Score_Desequilibrio"),
         ("Flag_Finalizacion", "Score_Finalizacion"),
         ("Flag_ZonaInfluencia", "Score_ZonaInfluencia"),
     ]:
         if score_col in base.columns:
-            thr = base[score_col].quantile(flag_q)
-            base[flag_name] = base[score_col] >= thr
+            threshold = base[score_col].quantile(flag_q)
+            base[flag_name] = base[score_col] >= threshold
         else:
             base[flag_name] = False
-
+    
+    # Tags descriptivos
     def tags(r):
         t = []
-        if r.get("Flag_CompromisoDef", False): t.append("Compromiso Def.")
+        if r.get("Flag_CompromisoDef", False): t.append("Compromiso Def")
         if r.get("Flag_Desequilibrio", False): t.append("Desequilibrio")
         if r.get("Flag_Finalizacion", False): t.append("Finalización")
         if r.get("Flag_ZonaInfluencia", False): t.append("Zona Influencia")
         return " | ".join(t) if t else "Balanceados"
-
+    
     base["Flags"] = base.apply(tags, axis=1)
-
+    
+    # Estadísticas de flags
+    flag_counts = {
+        "Compromiso Def": base["Flag_CompromisoDef"].sum(),
+        "Desequilibrio": base["Flag_Desequilibrio"].sum(),
+        "Finalización": base["Flag_Finalizacion"].sum(),
+        "Zona Influencia": base["Flag_ZonaInfluencia"].sum(),
+    }
+    
+    print("\n📈 Distribución de flags:")
+    for flag, count in flag_counts.items():
+        pct = count/len(base)*100 if len(base) > 0 else 0
+        print(f"  {flag}: {count} jugadores ({pct:.1f}%)")
+    
     # =========================
     # OUTPUT
     # =========================
     cols = [
         "player_id", "player_name", "team_name", "matches", "minutes",
         "primary_position", "primary_position_share",
-        "Score_CompromisoDefensivo", "Score_Desequilibrio", "Score_Finalizacion", "Score_ZonaInfluencia",
+        "Score_CompromisoDef", "Score_Desequilibrio", "Score_Finalizacion", "Score_ZonaInfluencia",
         "Score_Overall",
         "Flag_CompromisoDef", "Flag_Desequilibrio", "Flag_Finalizacion", "Flag_ZonaInfluencia",
         "Flags",
     ]
-    cols += ["lane_bias_origin_index", "lane_influence_side", "lane_bias_abs", "Lane_Profile"]
+    
+    # Agregar columnas de perfil de carril si existen
+    for col in ["lane_bias_index", "lane_influence_side", "Lane_Profile"]:
+        if col in base.columns:
+            cols.append(col)
+    
     cols = [c for c in cols if c in base.columns]
-
-
+    
     out = base[cols].sort_values("Score_Overall", ascending=False)
-
+    
+    # Crear directorio si no existe
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(out_csv, index=False, encoding="utf-8")
+    
     print("\n✅ SCORING COMPLETADO")
-    print("=" * 70)
+    print("="*70)
     print(f"📁 Output guardado en: {out_csv}")
     print(f"📊 Jugadores evaluados: {len(out):,}")
-
+    
     if not out.empty:
-        top_cols = [c for c in ["player_name", "team_name", "Score_Overall", "Flags"] if c in out.columns]
-        print("\n🏆 Top 5 Extremos:")
-        print(out[top_cols].head().to_string(index=False))
-
-    print("=" * 70)
+        print(f"\n🏆 Top 5 {position_group}:")
+        top5_cols = ["player_name", "team_name", "Score_Overall", "Flags", "Lane_Profile"]
+        top5_cols = [c for c in top5_cols if c in out.columns]
+        print(out[top5_cols].head().to_string(index=False))
+    
+    print("="*70)
+    
     return out
 
 
+# =========================
+# EJEMPLO DE USO
+# =========================
 if __name__ == "__main__":
-    # Ejemplo
-    per90_csv = Path("outputs/all_players_per90_all.csv")
-    role_lanes_csv = Path("outputs/extremos_obv_origen_destino_ALL_seasons_stacked.csv")
-    out_csv = Path("outputs/extremos_scores.csv")
-
-    run_extremos_scoring(
+    from pathlib import Path
+    
+    # Rutas
+    per90_csv = Path("outputs/all_players_complete_2024_2025.csv")
+    out_csv = Path("outputs/extremo_scores_2024_2025.csv")
+    
+    # Ejecutar scoring para extremos
+    scores = run_extremo_scoring(
         per90_csv=per90_csv,
-        role_lanes_csv=role_lanes_csv,
         out_csv=out_csv,
-        position_group="Extremos",
+        position_group="Extremo",
         min_minutes=450,
         min_matches=3,
-        flag_q=0.75,
+        flag_q=0.75,  # Top 25%
     )
