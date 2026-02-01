@@ -150,19 +150,22 @@ def run_delantero_scoring(
     FINALIZACION = [
         # Calidad de tiro
         ("xg_per_shot", 0.20, False),
-        ("shot_statsbomb_xg_per90", 0.20, False),
+        ("shot_statsbomb_xg_per90", 0.18, False),
         ("obv_total_net_type_shot_per90", 0.15, False),
-        
+
+        # Gol (bajo peso)
+        ("goals_per90", 0.05, False),
+
         # Presencia en área
         ("touches_in_opp_box_per90", 0.15, False),
         ("touches_in_opp_box_pct", 0.10, False),
-        
+
         # Creación open play
         ("obv_total_net_play_pattern_regular_play_per90", 0.10, False),
-        
+
         # Volumen y eficiencia
-        ("total_shots_per90", 0.05, False),
-        ("shot_touch_pct", 0.05, False),
+        ("total_shots_per90", 0.04, False),
+        ("shot_touch_pct", 0.03, False),
     ]
 
     # --- 2. PRESIONANTE (trabajo defensivo y presión alta) ---
@@ -192,7 +195,7 @@ def run_delantero_scoring(
         ("obv_total_net_type_pass_per90", 0.25, False),
         
         # Creación
-        ("xa_per90", 0.15, False),
+        ("pass_shot_assist_per90", 0.15, False),
         
         # Penalización por pérdidas
         ("total_turnovers_per90", 0.05, True),
@@ -220,9 +223,9 @@ def run_delantero_scoring(
 
     # Pesos de categorías para Score_Overall
     CAT_W = {
-        "Score_Finalizacion": 0.35,   # Lo más importante en un delantero
-        "Score_Presionante": 0.20,    # Trabajo defensivo
-        "Score_Conector": 0.20,       # Juego asociativo
+        "Score_Finalizacion": 0.40,   # Lo más importante en un delantero
+        "Score_Presionante": 0.10,    # Trabajo defensivo
+        "Score_Conector": 0.25,       # Juego asociativo
         "Score_Disruptivo": 0.25,     # Desequilibrio individual
     }
     

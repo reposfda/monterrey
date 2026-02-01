@@ -8,8 +8,33 @@ from datetime import datetime
 # Importar funciones de turnover
 from turnover_scoring import compute_player_turnovers, classify_turnover
 
+# Importar módulo de análisis de carriles OBV
+try:
+    from obv_lanes_builder import calculate_lane_bias_metrics
+    OBV_LANES_AVAILABLE = True
+    print("✓ Módulo obv_lanes_builder importado correctamente")
+except ImportError as e:
+    print(f"⚠️  Módulo obv_lanes_builder no disponible: {e}")
+    print("   Asegúrate de que obv_lanes_builder.py está en el mismo directorio")
+    OBV_LANES_AVAILABLE = False
+except Exception as e:
+    print(f"❌ Error importando obv_lanes_builder: {e}")
+    OBV_LANES_AVAILABLE = False
+
+# Importar módulo de análisis de zonas defensivas OBV
+try:
+    from obv_def_zone_builder import calculate_cb_zone_metrics
+    CB_ZONE_AVAILABLE = True
+    print("✓ Módulo cb_zone_builder importado correctamente")
+except ImportError as e:
+    print(f"⚠️  Módulo cb_zone_builder no disponible: {e}")
+    CB_ZONE_AVAILABLE = False
+except Exception as e:
+    print(f"❌ Error importando cb_zone_builder: {e}")
+    CB_ZONE_AVAILABLE = False
+
 # ============= CONFIG =============
-PATH = "data/events_2024_2025.csv"
+PATH = "data/events_2025_2026.csv"
 season = PATH.split('_', 1)[1].replace('.csv', '')
 
 ASSUME_END_CAP = 120
@@ -1712,6 +1737,100 @@ if missing_cols:
 
 final_df = player_sums[final_cols].copy()
 final_df = final_df.sort_values("total_minutes", ascending=False)
+
+# ============= 11B) MÉTRICAS DE CARRILES OBV =============
+if OBV_LANES_AVAILABLE:
+    print("\n" + "="*70)
+    print("CALCULANDO MÉTRICAS DE CARRILES Y ZONAS OBV")
+    print("="*70)
+    
+    try:
+        # Verificar que df_all existe y tiene las columnas necesarias
+        if 'df_all' not in locals() and 'df_all' not in globals():
+            print("  ⚠️  df_all no existe. Usando df en su lugar.")
+            df_for_lanes = df
+        else:
+            df_for_lanes = df_all
+        
+        # Verificar columnas necesarias
+        required_cols = ['pid', 'type', 'y', 'pass_end_location', 'obv_total_net']
+        missing = [c for c in required_cols if c not in df_for_lanes.columns]
+        
+        if missing:
+            print(f"  ⚠️  Columnas faltantes en df_for_lanes: {missing}")
+            if 'pid' in missing:
+                print(f"  ⚠️  Creando columna 'pid' en df_for_lanes...")
+                df_for_lanes = df_for_lanes.copy()
+                df_for_lanes["pid"] = get_player_id_series(df_for_lanes).astype("Int64")
+        
+        print(f"  DataFrame para carriles: {len(df_for_lanes):,} eventos")
+        print(f"  Columnas disponibles: pid={('pid' in df_for_lanes.columns)}, type={('type' in df_for_lanes.columns)}")
+        
+        # Obtener ancho de cancha (ya inferido)
+        _, pitch_width = infer_pitch_dimensions(df)
+        
+        print(f"  Columnas en final_df ANTES del merge: {len(final_df.columns)}")
+        print(f"  Filas en final_df: {len(final_df)}")
+        
+        # Calcular métricas de carriles para TODOS los jugadores
+        lanes_metrics = calculate_lane_bias_metrics(
+            df=df_for_lanes,                                # df_all o df con 'pid'
+            player_minutes_summary=player_minutes_summary,  # Ya calculado
+            pitch_width=pitch_width,                        # Ya inferido
+            extract_x_y_func=extract_x_y_from_location,    # Función helper
+            min_passes=50,                                  # Mínimo de pases para calcular bias
+        )
+        
+        if not lanes_metrics.empty:
+            print(f"  Filas en lanes_metrics: {len(lanes_metrics)}")
+            print(f"  Columnas en lanes_metrics: {list(lanes_metrics.columns)}")
+            
+            # Verificar si hay player_id en común
+            common_ids = set(final_df["player_id"]) & set(lanes_metrics["player_id"])
+            print(f"  Player IDs en común: {len(common_ids)}")
+            
+            # Merge con final_df
+            final_df = final_df.merge(
+                lanes_metrics,
+                on="player_id",
+                how="left"
+            )
+            
+            print(f"  Columnas en final_df DESPUÉS del merge: {len(final_df.columns)}")
+            print(f"✅ Métricas de carriles agregadas a final_df")
+            print(f"  Jugadores con lane_bias_index: {lanes_metrics['lane_bias_index'].notna().sum():,}")
+            print(f"  Columnas agregadas: {list(lanes_metrics.columns[1:])}")
+            
+            # Verificar que las columnas están en final_df
+            for col in lanes_metrics.columns[1:]:
+                if col in final_df.columns:
+                    non_null = final_df[col].notna().sum()
+                    print(f"    - {col}: {non_null} valores no nulos")
+                else:
+                    print(f"    ⚠️  {col}: NO ESTÁ en final_df")
+        else:
+            print(f"\n⚠️  No se generaron métricas de carriles (lanes_metrics está vacío)")
+    
+    except Exception as e:
+        print(f"\n❌ Error calculando métricas de carriles: {e}")
+        import traceback
+        traceback.print_exc()
+else:
+    print("\n⚠️  Módulo obv_lanes_builder no disponible. Métricas de carriles omitidas.")
+
+if CB_ZONE_AVAILABLE:
+    try:
+        zone_metrics = calculate_cb_zone_metrics(
+            df=df_all,
+            player_minutes_summary=player_minutes_summary,
+            pitch_length=120.0,
+            pitch_width=80.0,
+        )
+        if not zone_metrics.empty:
+            final_df = final_df.merge(zone_metrics, on="player_id", how="left")
+            print(f"✅ Métricas de zona agregadas: {len(zone_metrics):,} jugadores")
+    except Exception as e:
+        print(f"❌ Error en cb_zone_builder: {e}")
 
 # ============= 12) EXPORTS CON TEMPORADA EN NOMBRE =============
 print("\n" + "="*70)

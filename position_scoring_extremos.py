@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Sistema de Scoring para Interiores / Mediapuntas
+Sistema de Scoring para Extremos
 Versión simplificada - Solo usa CSV per90 (sin pool_builder, sin cálculo de métricas)
 
 Categorías:
-1. Box to Box - Presencia en ambas áreas
-2. Desequilibrio / Creativos - Ruptura con regate y conducción
-3. Organización - Construcción y progresión con pase
-4. Contencion / Presion - Trabajo defensivo
+1. Compromiso Defensivo - Presión y recuperaciones altas
+2. Desequilibrio - Dribble, carry, asistencias
+3. Finalización - xG, shots, toques en área
+4. Zona de Influencia - OBV desde exterior vs interior (lane bias)
 
 Requiere:
-- all_players_per90_all.csv (output del script principal)
+- all_players_complete_{season}.csv (output del script principal con métricas de carriles)
 - positions_config.py (módulo de configuración)
 """
 
@@ -68,7 +68,7 @@ def filter_by_position_group(df: pd.DataFrame, group: str) -> pd.DataFrame:
     
     Args:
         df: DataFrame con columna 'primary_position'
-        group: Nombre del grupo (ej: "Interior", "Volante")
+        group: Nombre del grupo (ej: "Extremo")
         
     Returns:
         DataFrame filtrado
@@ -82,22 +82,42 @@ def filter_by_position_group(df: pd.DataFrame, group: str) -> pd.DataFrame:
     return df[mask].copy()
 
 
+def lane_tag(r):
+    """Genera tag descriptivo del perfil de carril"""
+    v = r.get("lane_bias_index", np.nan)
+    if pd.isna(v):
+        return "Sin dato"
+    
+    side = "Interior" if v >= 0 else "Exterior"
+    
+    # Clasificar fuerza del sesgo
+    abs_v = abs(v)
+    if abs_v < 0.15:
+        strength = "Mixto"
+    elif abs_v < 0.35:
+        strength = "Moderado"
+    else:
+        strength = "Marcado"
+    
+    return f"{side} ({strength})"
+
+
 # ============= SCORING PRINCIPAL =============
-def run_interior_scoring(
+def run_extremo_scoring(
     per90_csv: Path,
     out_csv: Path,
-    position_group: str = "Interior/Mediapunta",
+    position_group: str = "Extremo",
     min_minutes: int = 450,
     min_matches: int = 3,
     flag_q: float = 0.75,
 ):
     """
-    Calcula scoring de interiores/mediapuntas usando solo el CSV per90.
+    Calcula scoring de extremos usando solo el CSV per90.
     
     Args:
-        per90_csv: Path al archivo all_players_per90_all.csv
+        per90_csv: Path al archivo all_players_complete.csv
         out_csv: Path de salida para scores
-        position_group: Grupo de posición ("Interior")
+        position_group: Grupo de posición ("Extremo")
         min_minutes: Minutos mínimos requeridos
         min_matches: Partidos mínimos requeridos
         flag_q: Cuantil para flags (0.75 = top 25%)
@@ -146,108 +166,106 @@ def run_interior_scoring(
     # Formato: (columna, peso, invertir?)
     # invertir=True para métricas donde menor es mejor
     
-    # --- 1. BOX TO BOX (presencia en ambas áreas) ---
-    BOX_TO_BOX = [
-        # Recuperaciones por tercio (30%)
-        ("n_events_third_defensive_ball_recovery_per90", 0.11, False),
-        ("n_events_third_middle_ball_recovery_per90",    0.14, False),
-        ("n_events_third_attacking_ball_recovery_per90", 0.11, False),
-
-        # Duelos por tercio (30%)
-        ("n_events_third_defensive_duel_per90", 0.08, False),
-        ("n_events_third_middle_duel_per90",    0.14, False),
-        ("n_events_third_attacking_duel_per90", 0.08, False),
-
-        # Progresión / llegada (25%)
-        ("carry_into_final_third_per90", 0.10, False),
-        ("touches_in_opp_box_per90",     0.10, False),
-        ("shot_touch_pct",               0.05, False),
-
-        # Volumen general de participación (15%)
-        ("total_touches_per90", 0.09, False),
+    # --- 1. COMPROMISO DEFENSIVO ---
+    COMPROMISO_DEF = [
+        ("n_events_third_attacking_pressure_per90", 0.20, False),
+        ("counterpress_per90", 0.20, False),
+        ("n_events_third_attacking_ball_recovery_per90", 0.15, False),
+        ("obv_total_net_type_ball_recovery_per90", 0.20, False),
+        ("obv_total_net_type_interception_per90", 0.10, False),
+        ("pressure_per90", 0.15, False),
     ]
 
-    # --- 2. DESEQUILIBRIO / CREATIVOS (ruptura individual) ---
+    # --- 2. DESEQUILIBRIO ---
     DESEQUILIBRIO = [
-        # 1) Ruptura individual (55%)
-        ("obv_total_net_type_dribble_per90", 0.30, False),
-        ("obv_total_net_type_carry_per90",   0.25, False),
-
-        # 2) Progresión profunda (25%)
-        ("carry_into_final_third_per90", 0.15, False),
-        ("pass_into_final_third_per90",  0.10, False),
-
-        # 3) Amenaza de remate (20%)
-        ("obv_total_net_type_shot_per90", 0.10, False),
-        ("shot_statsbomb_xg_per90",       0.10, False),
+        ("obv_total_net_type_dribble_per90", 0.18, False),
+        ("obv_total_net_type_carry_per90", 0.18, False),
+        ("carry_into_final_third_per90", 0.10, False),
+        ("pass_into_final_third_per90", 0.08, False),
+        ("pass_shot_assist_per90", 0.15, False),
+        ("pass_goal_assist_per90", 0.05, False),
+        ("xa_per90", 0.12, False),
+        ("obv_total_net_type_pass_per90", 0.14, False),
     ]
 
-    # --- 3. ORGANIZACIÓN / PROGRESIÓN (construcción con pase) ---
-    ORGANIZACION = [
-        # 1) Valor del pase (OBV)
-        ("obv_total_net_type_pass_per90", 0.30, False),
-
-        # 2) Volumen (participación)
-        ("complete_passes_per90", 0.20, False),
-
-        # 3) Creación / progresión con pase
-        ("pass_shot_assist_per90",                   0.12, False),
-        ("obv_total_net_third_attacking_pass_per90", 0.13, False),
-        ("obv_total_net_play_pattern_regular_play_per90", 0.10, False),
-
-        # 4) Seguridad / cuidado del balón (invertido)
-        ("total_turnovers_per90", 0.15, True),
+    # --- 3. FINALIZACIÓN ---
+    FINALIZACION = [
+        ("shot_statsbomb_xg_per90", 0.35, False),
+        ("obv_total_net_type_shot_per90", 0.25, False),
+        ("xg_per_shot", 0.20, False),
+        ("touches_in_opp_box_per90", 0.20, False),
     ]
 
-    # --- 4. CONTENCION_PRESION (trabajo defensivo) ---
-    CONTENCION_PRESION = [
-        # Presión (40%) - sostener + recuperar rápido
-        ("n_events_third_middle_pressure_per90",    0.18, False),
-        ("n_events_third_attacking_pressure_per90", 0.12, False),
-        ("counterpress_per90",                     0.10, False),
-
-        # Recuperaciones (25%) - segundo balón y agresividad
-        ("n_events_third_middle_ball_recovery_per90",    0.12, False),
-        ("n_events_third_attacking_ball_recovery_per90", 0.13, False),
-
-        # Duelos / tackles (20%)
-        ("obv_total_net_duel_type_tackle_per90", 0.10, False),
-        ("duel_tackle_per90",                    0.10, False),
-
-        # Intercepciones (15%) - volumen + impacto
-        ("obv_total_net_type_interception_per90", 0.08, False),
-        ("obv_total_net_third_middle_interception_per90", 0.07, False),
+    # --- 4. ZONA DE INFLUENCIA (métricas de carriles) ---
+    ZONA_INFLUENCIA = [
+        ("obv_from_ext_per90", 0.35, False),  # OBV desde bandas
+        ("obv_from_int_per90", 0.35, False),  # OBV desde interior
+        ("obv_total_net_type_pass_per90", 0.30, False),  # OBV total de pases
     ]
 
     CATS = {
-        "Score_BoxToBox": BOX_TO_BOX,
+        "Score_CompromisoDef": COMPROMISO_DEF,
         "Score_Desequilibrio": DESEQUILIBRIO,
-        "Score_Organizacion": ORGANIZACION,
-        "Score_ContencionPresion": CONTENCION_PRESION,
+        "Score_Finalizacion": FINALIZACION,
+        "Score_ZonaInfluencia": ZONA_INFLUENCIA,
     }
 
     # Pesos de categorías para Score_Overall
     CAT_W = {
-        "Score_BoxToBox": 0.25,
-        "Score_Desequilibrio": 0.30,
-        "Score_Organizacion": 0.25,
-        "Score_ContencionPresion": 0.20,
+        "Score_CompromisoDef": 0.20,
+        "Score_Desequilibrio": 0.35,
+        "Score_Finalizacion": 0.30,
+        "Score_ZonaInfluencia": 0.15,
     }
     
     # =========================
     # CALCULAR MÉTRICAS DERIVADAS SI ES NECESARIO
     # =========================
-    print("\n🔧 Calculando métricas derivadas...")
+    print("\n🔧 Verificando métricas derivadas...")
     
-    # complete_passes_per90 (si no existe)
-    if "complete_passes_per90" not in base.columns and "complete_passes" in base.columns:
-        base["complete_passes"] = pd.to_numeric(base["complete_passes"], errors="coerce")
-        base["complete_passes_per90"] = np.where(
-            base["minutes"] > 0,
-            base["complete_passes"] / base["minutes"] * 90.0,
-            np.nan
+    # xg_per_shot (ya debería estar calculado en main_analysis)
+    if "xg_per_shot" not in base.columns:
+        print("  ⚠️  xg_per_shot no encontrado, intentando calcular...")
+        if "shot_statsbomb_xg_per90" in base.columns and "total_shots_per90" in base.columns:
+            base["xg_per_shot"] = np.where(
+                base["total_shots_per90"] > 0,
+                base["shot_statsbomb_xg_per90"] / base["total_shots_per90"],
+                np.nan
+            )
+            print("  ✓ xg_per_shot calculado")
+    
+    # xa_per90 (debería venir del dataset)
+    if "xa_per90" not in base.columns:
+        print("  ⚠️  xa_per90 no encontrado en el dataset")
+    
+    # =========================
+    # PERFIL DE INFLUENCIA (DESCRIPTIVO)
+    # =========================
+    if "lane_bias_index" in base.columns:
+        print("\n🎯 Calculando perfil de influencia por carriles...")
+        
+        base["lane_bias_index"] = pd.to_numeric(base["lane_bias_index"], errors="coerce")
+        
+        base["lane_influence_side"] = np.where(
+            base["lane_bias_index"].isna(),
+            "Sin dato",
+            np.where(base["lane_bias_index"] >= 0, "Interior", "Exterior")
         )
-        print("✓ complete_passes_per90 calculado")
+        
+        base["Lane_Profile"] = base.apply(lane_tag, axis=1)
+        
+        # Estadísticas
+        has_bias = base["lane_bias_index"].notna().sum()
+        if has_bias > 0:
+            ext_count = (base["lane_influence_side"] == "Exterior").sum()
+            int_count = (base["lane_influence_side"] == "Interior").sum()
+            print(f"  ✓ Jugadores con perfil de carril: {has_bias}")
+            print(f"    - Perfil Exterior: {ext_count}")
+            print(f"    - Perfil Interior: {int_count}")
+    else:
+        print("\n⚠️  lane_bias_index no encontrado (métricas de carriles no disponibles)")
+        base["lane_influence_side"] = "Sin dato"
+        base["Lane_Profile"] = "Sin dato"
     
     # =========================
     # CÁLCULO DE SCORES
@@ -313,10 +331,10 @@ def run_interior_scoring(
     
     # Flags basados en cuantil
     for flag_name, score_col in [
-        ("Flag_BoxToBox", "Score_BoxToBox"),
+        ("Flag_CompromisoDef", "Score_CompromisoDef"),
         ("Flag_Desequilibrio", "Score_Desequilibrio"),
-        ("Flag_Organizacion", "Score_Organizacion"),
-        ("Flag_ContencionPresion", "Score_ContencionPresion"),
+        ("Flag_Finalizacion", "Score_Finalizacion"),
+        ("Flag_ZonaInfluencia", "Score_ZonaInfluencia"),
     ]:
         if score_col in base.columns:
             threshold = base[score_col].quantile(flag_q)
@@ -327,20 +345,20 @@ def run_interior_scoring(
     # Tags descriptivos
     def tags(r):
         t = []
-        if r.get("Flag_BoxToBox", False): t.append("Box to Box")
-        if r.get("Flag_Desequilibrio", False): t.append("Desequilibrantes")
-        if r.get("Flag_Organizacion", False): t.append("Organizadores")
-        if r.get("Flag_ContencionPresion", False): t.append("Contención/Presión")
+        if r.get("Flag_CompromisoDef", False): t.append("Compromiso Def")
+        if r.get("Flag_Desequilibrio", False): t.append("Desequilibrio")
+        if r.get("Flag_Finalizacion", False): t.append("Finalización")
+        if r.get("Flag_ZonaInfluencia", False): t.append("Zona Influencia")
         return " | ".join(t) if t else "Balanceados"
     
     base["Flags"] = base.apply(tags, axis=1)
     
     # Estadísticas de flags
     flag_counts = {
-        "Box to Box": base["Flag_BoxToBox"].sum(),
-        "Desequilibrantes": base["Flag_Desequilibrio"].sum(),
-        "Organizadores": base["Flag_Organizacion"].sum(),
-        "Defensivos": base["Flag_ContencionPresion"].sum(),
+        "Compromiso Def": base["Flag_CompromisoDef"].sum(),
+        "Desequilibrio": base["Flag_Desequilibrio"].sum(),
+        "Finalización": base["Flag_Finalizacion"].sum(),
+        "Zona Influencia": base["Flag_ZonaInfluencia"].sum(),
     }
     
     print("\n📈 Distribución de flags:")
@@ -354,11 +372,17 @@ def run_interior_scoring(
     cols = [
         "player_id", "player_name", "team_name", "matches", "minutes",
         "primary_position", "primary_position_share",
-        "Score_BoxToBox", "Score_Desequilibrio", "Score_Organizacion", "Score_ContencionPresion",
+        "Score_CompromisoDef", "Score_Desequilibrio", "Score_Finalizacion", "Score_ZonaInfluencia",
         "Score_Overall",
-        "Flag_BoxToBox", "Flag_Desequilibrio", "Flag_Organizacion", "Flag_ContencionPresion",
+        "Flag_CompromisoDef", "Flag_Desequilibrio", "Flag_Finalizacion", "Flag_ZonaInfluencia",
         "Flags",
     ]
+    
+    # Agregar columnas de perfil de carril si existen
+    for col in ["lane_bias_index", "lane_influence_side", "Lane_Profile"]:
+        if col in base.columns:
+            cols.append(col)
+    
     cols = [c for c in cols if c in base.columns]
     
     out = base[cols].sort_values("Score_Overall", ascending=False)
@@ -374,7 +398,7 @@ def run_interior_scoring(
     
     if not out.empty:
         print(f"\n🏆 Top 5 {position_group}:")
-        top5_cols = ["player_name", "team_name", "Score_Overall", "Flags"]
+        top5_cols = ["player_name", "team_name", "Score_Overall", "Flags", "Lane_Profile"]
         top5_cols = [c for c in top5_cols if c in out.columns]
         print(out[top5_cols].head().to_string(index=False))
     
@@ -390,14 +414,14 @@ if __name__ == "__main__":
     from pathlib import Path
     
     # Rutas
-    per90_csv = Path("outputs/all_players_complete_2025_2026.csv")
-    out_csv = Path("outputs/interior_scores_2025_2026.csv")
+    per90_csv = Path("outputs/all_players_complete_2024_2025.csv")
+    out_csv = Path("outputs/extremo_scores_2024_2025.csv")
     
-    # Ejecutar scoring para interiores
-    scores = run_interior_scoring(
+    # Ejecutar scoring para extremos
+    scores = run_extremo_scoring(
         per90_csv=per90_csv,
         out_csv=out_csv,
-        position_group="Interior/Mediapunta",
+        position_group="Extremo",
         min_minutes=450,
         min_matches=3,
         flag_q=0.75,  # Top 25%
