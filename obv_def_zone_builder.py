@@ -140,32 +140,6 @@ def _zone_metrics_one_match(df_match, player_name, df_rival, q, scale, min_def_a
 
     obv_from = df_rival.loc[down, "obv_total_net"].sum(skipna=True)
 
-    # --- DIAGNÓSTICO GRANULAR (se ejecuta una sola vez) ---
-    if not hasattr(_zone_metrics_one_match, "_diag_done"):
-        _zone_metrics_one_match._diag_done = True
-        n_total_events = len(df_rival)
-        # Duplicados: contar filas vs filas únicas por (possession, _t, type, x, y)
-        _dup_cols = [c for c in ["possession", "_t", "type", "x", "y"] if c in df_rival.columns]
-        n_unique_events = df_rival[_dup_cols].drop_duplicates().shape[0]
-        # Posesiones
-        n_total_poss = df_rival["possession"].nunique()
-        n_flagged_poss = int(t0_per_poss.shape[0])
-        # Tiros
-        is_shot = df_rival["type"] == "Shot"
-        n_total_shots = int(is_shot.sum())
-        n_flagged_shots = int((down & is_shot).sum())
-        # Eventos dentro de zona
-        n_inside = int(inside.sum())
-        print(f"\n  === DIAGNÓSTICO ZONA: {player_name} ===")
-        print(f"  Eventos rival en partido : {n_total_events}")
-        print(f"  Únicos (poss,_t,type,x,y): {n_unique_events}  ← duplicados: {n_total_events - n_unique_events}")
-        print(f"  Eventos dentro de zona   : {n_inside} ({100*n_inside/max(n_total_events,1):.1f}%)")
-        print(f"  Posesiones rival total   : {n_total_poss}")
-        print(f"  Posesiones que tocaron zona: {n_flagged_poss} ({100*n_flagged_poss/max(n_total_poss,1):.0f}%)")
-        print(f"  Tiros rival en partido   : {n_total_shots}")
-        print(f"  Tiros en posesiones flagueadas: {n_flagged_shots}")
-        print(f"  === FIN DIAGNÓSTICO ZONA ===\n")
-
     # --- Tiros surgidos desde la zona ---
     # Un tiro surge de la zona si cumple la misma condición `down`: su posesión
     # tocó la zona y el tiro ocurre en o después del primer contacto.
@@ -236,16 +210,6 @@ def calculate_cb_zone_metrics(
     match_groups = {mid: g for mid, g in df.groupby("match_id")}
     print(f"  Partidos a procesar: {len(match_groups):,}")
 
-    # --- DIAGNÓSTICO: verificar que total_minutes es la suma de la temporada ---
-    print(f"  player_minutes_summary shape: {player_minutes_summary.shape}")
-    _pms_cols = ["player_name", "total_minutes"]
-    _pms_show = [c for c in _pms_cols if c in player_minutes_summary.columns]
-    if _pms_show:
-        print(f"  Ejemplo total_minutes (primeros 5 jugadores):\n"
-              f"{player_minutes_summary[_pms_show].drop_duplicates().head(5).to_string(index=False)}")
-        n_unique = player_minutes_summary["player_name"].nunique() if "player_name" in player_minutes_summary.columns else "?"
-        print(f"  Filas en summary: {len(player_minutes_summary)} | Jugadores únicos: {n_unique}")
-
     # Lookup: player_name → {player_id, total_minutes}
     player_lookup = {}
     for _, row in player_minutes_summary.iterrows():
@@ -312,20 +276,6 @@ def calculate_cb_zone_metrics(
     if not player_totals:
         print("  ⚠️  No se generaron métricas de zona")
         return pd.DataFrame()
-
-    # --- DIAGNÓSTICO: valores crudos vs per90 para 3 jugadores de ejemplo ---
-    print("\n  === DIAGNÓSTICO: crudos vs per90 ===")
-    _sample_keys = list(player_totals.keys())[:3]
-    for _pn in _sample_keys:
-        _info = player_lookup[_pn]
-        _t = player_totals[_pn]
-        _per90 = 90.0 / _info["total_minutes"] if _info["total_minutes"] > 0 else 0
-        print(f"  {_pn}:")
-        print(f"    total_minutes = {_info['total_minutes']:.1f}  →  factor per90 = {_per90:.4f}")
-        print(f"    shots crudo={_t['shots']}  →  per90={_t['shots']*_per90:.2f}")
-        print(f"    xg    crudo={_t['xg']:.3f}  →  per90={_t['xg']*_per90:.3f}")
-        print(f"    obv_into crudo={_t['obv_into']:.3f}  →  per90={_t['obv_into']*_per90:.3f}")
-    print("  === FIN DIAGNÓSTICO ===\n")
 
     # Construir DataFrame de resultado con per90
     results = []
