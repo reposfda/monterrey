@@ -8,6 +8,9 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from utils.loaders import load_per90
+from utils.filters import sidebar_filters
+
 from position_scoring_defensor_central import run_cb_scoring
 from position_scoring_delantero import run_delantero_scoring
 from position_scoring_extremos import run_extremo_scoring
@@ -15,8 +18,9 @@ from position_scoring_interior import run_interior_scoring
 from position_scoring_lateral import run_position_scoring
 from position_scoring_volante import run_volante_scoring
 
+
 # =========================================
-# CONFIG BÁSICA + ESTILO (igual a tu app.py)
+# CONFIG + ESTILO
 # =========================================
 st.set_page_config(page_title="Scoring Liga – Monterrey", layout="wide")
 
@@ -26,12 +30,13 @@ ACCENT = "#6CA0DC"
 TEXT = "#FFFFFF"
 GOLD = "#c49308"
 
-BASE_DIR = Path(__file__).resolve().parents[1]  # repo root (asumiendo pages/ dentro)
+BASE_DIR = Path(__file__).resolve().parents[1]
 LOGO_PATH = BASE_DIR / "assets" / "monterrey_logo.png"
 
-# ✅ Cambiá esto a tu “base per90” real
-# Ej: outputs/all_players_complete_2025_2026.csv
 PER90_PATH = BASE_DIR / "outputs" / "all_players_complete_2025_2026.csv"
+if not PER90_PATH.exists():
+    st.error(f"No encuentro el archivo base per90 en: {PER90_PATH}")
+    st.stop()
 
 st.markdown(
     f"""
@@ -54,20 +59,6 @@ st.markdown(
 
         h1, h2, h3, h4, h5, h6, p, label {{
             color: {TEXT} !important;
-        }}
-
-        .stSidebar .stButton > button {{
-            width: 100%;
-            border-radius: 999px;
-            background-color: {ACCENT};
-            color: #FFFFFF !important;
-            border: none;
-            font-weight: 600;
-            padding: 0.4rem 0.75rem;
-        }}
-        .stSidebar .stButton > button:hover {{
-            background-color: #4E82C0;
-            color: #FFFFFF !important;
         }}
 
         div[data-baseweb="slider"] span {{
@@ -142,17 +133,7 @@ st.markdown(
 )
 
 # =========================================
-# DATA LOAD
-# =========================================
-@st.cache_data
-def load_per90(path: Path) -> pd.DataFrame:
-    return pd.read_csv(path, low_memory=False, encoding="latin1")
-
-
-# =========================================
-# SCORING WRAPPER (dinámico por posición)
-# - aplica filtro edad ANTES de score (para que percentiles sean del grupo filtrado)
-# - usa tmp csv para reutilizar run_*_scoring sin reescribirlos
+# SCORING WRAPPER
 # =========================================
 @st.cache_data(show_spinner=False)
 def compute_scoring(
@@ -160,26 +141,23 @@ def compute_scoring(
     position_key: str,
     min_minutes: int,
     min_matches: int,
-    age_min: int | None,
-    age_max: int | None,
+    selected_teams: list[str],
 ) -> pd.DataFrame:
     df = load_per90(Path(per90_path))
 
-    # Filtro edad si existe columna
-    if age_min is not None and age_max is not None:
-        if "age" in df.columns:
-            df["age"] = pd.to_numeric(df["age"], errors="coerce")
-            df = df[(df["age"] >= age_min) & (df["age"] <= age_max)].copy()
+    # filtro equipos (antes del scoring)
+    if selected_teams:
+        if "teams" in df.columns:
+            df = df[df["teams"].astype(str).isin([str(t) for t in selected_teams])].copy()
 
-    # Guardar a temp para consumir por los run_* (que esperan Path)
+    # temp csv para reutilizar scripts run_*
     with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
         tmp_path = Path(tmp.name)
     df.to_csv(tmp_path, index=False, encoding="utf-8")
 
-    out_tmp = (Path("outputs") / "_tmp_scoring.csv")  # se crea en cwd (ok en local/streamlit)
+    out_tmp = (Path("outputs") / "_tmp_scoring.csv")
     out_tmp.parent.mkdir(parents=True, exist_ok=True)
 
-    # Ejecutar scoring según posición
     if position_key == "Zaguero":
         out = run_cb_scoring(
             per90_csv=tmp_path,
@@ -247,6 +225,27 @@ def compute_scoring(
 
     return out
 
+def pick_category_score_cols(df: pd.DataFrame) -> list[str]:
+    """
+    Devuelve columnas de score por categoría (excluye overall/total).
+    Busca patrones comunes en tus scripts:
+    - 'score_' prefijo
+    - o 'Score_' prefijo
+    y excluye overall/total.
+    """
+    candidates = []
+    for c in df.columns:
+        cl = c.lower()
+        if cl.startswith("score_") or cl.startswith("score"):
+            # excluir overall/total
+            if any(k in cl for k in ["overall", "total"]):
+                continue
+            # evitar columnas que no sean numéricas (por si acaso)
+            candidates.append(c)
+
+    # ordenar para que quede estable
+    return sorted(set(candidates))
+
 
 # =========================================
 # HEADER
@@ -260,7 +259,7 @@ with c2:
         f"""
         <h1 style="margin-bottom:0;">Scoring Liga – Ranking</h1>
         <p style="color:{ACCENT}; font-size:0.95rem; margin-top:0.25rem;">
-            Top 10 por posición (filtros: minutos, edad, posición)
+            Top 10 por posición (filtros: minutos, equipos, posición)
         </p>
         """,
         unsafe_allow_html=True,
@@ -269,78 +268,113 @@ with c2:
 st.markdown("---")
 
 # =========================================
-# SIDEBAR FILTERS
+# FILTERS
 # =========================================
-st.sidebar.title("Filtros")
+df_base = load_per90(PER90_PATH)
 
-positions = ["Zaguero", "Lateral", "Volante", "Interior/Mediapunta", "Extremo", "Delantero"]
-pos = st.sidebar.selectbox("Posición", positions, index=0)
+filters = sidebar_filters(
+    df_base,
+    show_position=True,
+    show_minutes=True,
+    show_team=True,
+)
 
-min_minutes = st.sidebar.slider("Minutos mínimos", 0, 3000, 450, step=50)
-min_matches = 3  # fijo (si querés slider, lo agregamos)
-
-# rango edad si existe
-per90_preview = load_per90(PER90_PATH) if PER90_PATH.exists() else pd.DataFrame()
-age_min, age_max = None, None
-if not per90_preview.empty and "age" in per90_preview.columns:
-    age_col = pd.to_numeric(per90_preview["age"], errors="coerce")
-    a0 = int(age_col.dropna().min()) if age_col.notna().any() else 16
-    a1 = int(age_col.dropna().max()) if age_col.notna().any() else 40
-    age_range = st.sidebar.slider("Edad", a0, a1, (a0, a1), step=1)
-    age_min, age_max = age_range[0], age_range[1]
-else:
-    st.sidebar.caption("Edad: no disponible (no existe columna 'age' en el CSV base).")
+pos = filters["position"]
+min_minutes = int(filters["min_minutes"])
+selected_teams = filters.get("teams", [])
+min_matches = 3
 
 # =========================================
-# MAIN: RUN + TOP 10
+# MAIN
 # =========================================
-if not PER90_PATH.exists():
-    st.error(f"No encuentro el archivo base per90 en: {PER90_PATH}")
-    st.stop()
-
 with st.spinner("Calculando scoring..."):
     scores = compute_scoring(
         per90_path=str(PER90_PATH),
         position_key=pos,
-        min_minutes=int(min_minutes),
-        min_matches=int(min_matches),
-        age_min=age_min,
-        age_max=age_max,
+        min_minutes=min_minutes,
+        min_matches=min_matches,
+        selected_teams=selected_teams,
     )
 
-if scores.empty:
+if scores is None or scores.empty:
     st.warning("No hay jugadores que cumplan los filtros.")
     st.stop()
 
-# normalizar nombres esperados (según cada script)
+# --- renombres base (sin crear duplicados)
 rename_map = {
-    "Score_Overall": "Score",
     "player_name": "Jugador",
     "team_name": "Equipo",
+    "teams": "Equipo",
     "minutes": "Minutos",
     "matches": "PJ",
     "Flags": "Perfil",
 }
 scores_disp = scores.rename(columns=rename_map).copy()
 
-cols_show = [c for c in ["Jugador", "Equipo", "Minutos", "PJ", "Score", "Perfil"] if c in scores_disp.columns]
+# --- asegurar score overall en una columna única
+# (algunos scripts devuelven Score_Overall, otros score_total, etc.)
+score_overall_candidates = [c for c in scores_disp.columns if c.lower() in ["score_overall", "score_total", "overall_score", "score"]]
+# prioridad: Score_Overall si existe
+if "Score_Overall" in scores.columns:
+    scores_disp["Score"] = pd.to_numeric(scores["Score_Overall"], errors="coerce")
+elif "score_overall" in scores.columns:
+    scores_disp["Score"] = pd.to_numeric(scores["score_overall"], errors="coerce")
+elif "score_total" in scores.columns:
+    scores_disp["Score"] = pd.to_numeric(scores["score_total"], errors="coerce")
+elif "Score" in scores_disp.columns:
+    # si ya existe Score, lo fuerza a numérico (y si estaba duplicado lo evitamos porque lo creamos nosotros arriba)
+    scores_disp["Score"] = pd.to_numeric(scores_disp["Score"], errors="coerce")
+else:
+    st.error("No encuentro columna de score overall (Score_Overall / score_overall / score_total / Score).")
+    st.stop()
+
+# --- detectar scores por categoría (usar df original 'scores' para encontrarlos mejor)
+cat_cols_raw = pick_category_score_cols(scores)
+
+# construir df con columnas de categoría ya normalizadas
+cat_df = scores[cat_cols_raw].copy() if cat_cols_raw else pd.DataFrame(index=scores.index)
+
+# nombres lindos
+pretty_map = {}
+for c in cat_cols_raw:
+    name = c.replace("score_", "").replace("Score_", "")
+    name = name.replace("_", " ").strip().title()
+    pretty_map[c] = name
+
+cat_df = cat_df.rename(columns=pretty_map)
+
+# unir al display (por índice)
+scores_disp = pd.concat([scores_disp, cat_df], axis=1)
+
+# --- columnas a mostrar
+cat_cols_pretty = list(cat_df.columns)
+base_cols = [c for c in ["Jugador", "Equipo", "Minutos", "PJ", "Score", "Perfil"] if c in scores_disp.columns]
+cols_show = base_cols + cat_cols_pretty
+
+# --- Top 10
 top10 = (
     scores_disp.sort_values("Score", ascending=False)[cols_show]
     .head(10)
     .reset_index(drop=True)
 )
 
-# formateo
+# --- formateo
 if "Minutos" in top10.columns:
     top10["Minutos"] = pd.to_numeric(top10["Minutos"], errors="coerce").fillna(0).astype(int)
 if "PJ" in top10.columns:
     top10["PJ"] = pd.to_numeric(top10["PJ"], errors="coerce").fillna(0).astype(int)
 if "Score" in top10.columns:
-    top10["Score"] = pd.to_numeric(top10["Score"], errors="coerce").map(lambda x: f"{x:.2f}")
+    top10["Score"] = pd.to_numeric(top10["Score"], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.2f}")
 
-st.subheader(f"🏆 Top 10 – {pos}")
+for c in cat_cols_pretty:
+    top10[c] = pd.to_numeric(top10[c], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.2f}")
+
+team_label = ""
+if selected_teams:
+    team_label = f" ({', '.join(selected_teams[:2])}{'...' if len(selected_teams) > 2 else ''})"
+
+st.subheader(f"🏆 Top 10 – {pos}{team_label}")
 st.markdown(top10.to_html(index=False, classes="mty-table"), unsafe_allow_html=True)
 
-# opcional: tabla completa
 with st.expander("Ver ranking completo"):
     st.dataframe(scores_disp.sort_values("Score", ascending=False), use_container_width=True)

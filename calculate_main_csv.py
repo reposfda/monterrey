@@ -1839,7 +1839,7 @@ print("="*70)
 
 # ============= ÚNICO EXPORT CSV: all_players_complete =============
 output_complete = os.path.join(OUTPUT_DIR, f"all_players_complete_{season}.csv")
-final_df.to_csv(output_complete, index=False)
+final_df.to_csv(output_complete, index=False, encoding="utf-8-sig")
 print(f"\n✓ CSV EXPORTADO: {output_complete}")
 
 # ============= RESTO DE OUTPUTS: SOLO EN LOG (NO CSV) =============
