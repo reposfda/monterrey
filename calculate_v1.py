@@ -21,8 +21,20 @@ except Exception as e:
     print(f"❌ Error importando obv_lanes_builder: {e}")
     OBV_LANES_AVAILABLE = False
 
+# Importar módulo de análisis de zonas defensivas OBV
+try:
+    from obv_def_zone_builder import calculate_cb_zone_metrics
+    CB_ZONE_AVAILABLE = True
+    print("✓ Módulo cb_zone_builder importado correctamente")
+except ImportError as e:
+    print(f"⚠️  Módulo cb_zone_builder no disponible: {e}")
+    CB_ZONE_AVAILABLE = False
+except Exception as e:
+    print(f"❌ Error importando cb_zone_builder: {e}")
+    CB_ZONE_AVAILABLE = False
+
 # ============= CONFIG =============
-PATH = "data/events_2024_2025.csv"
+PATH = "data/events_2025_2026.csv"
 season = PATH.split('_', 1)[1].replace('.csv', '')
 
 ASSUME_END_CAP = 120
@@ -1729,7 +1741,7 @@ final_df = final_df.sort_values("total_minutes", ascending=False)
 # ============= 11B) MÉTRICAS DE CARRILES OBV =============
 if OBV_LANES_AVAILABLE:
     print("\n" + "="*70)
-    print("CALCULANDO MÉTRICAS DE CARRILES OBV")
+    print("CALCULANDO MÉTRICAS DE CARRILES Y ZONAS OBV")
     print("="*70)
     
     try:
@@ -1805,6 +1817,20 @@ if OBV_LANES_AVAILABLE:
         traceback.print_exc()
 else:
     print("\n⚠️  Módulo obv_lanes_builder no disponible. Métricas de carriles omitidas.")
+
+if CB_ZONE_AVAILABLE:
+    try:
+        zone_metrics = calculate_cb_zone_metrics(
+            df=df_all,
+            player_minutes_summary=player_minutes_summary,
+            pitch_length=120.0,
+            pitch_width=80.0,
+        )
+        if not zone_metrics.empty:
+            final_df = final_df.merge(zone_metrics, on="player_id", how="left")
+            print(f"✅ Métricas de zona agregadas: {len(zone_metrics):,} jugadores")
+    except Exception as e:
+        print(f"❌ Error en cb_zone_builder: {e}")
 
 # ============= 12) EXPORTS CON TEMPORADA EN NOMBRE =============
 print("\n" + "="*70)
