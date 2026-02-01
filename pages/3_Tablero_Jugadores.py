@@ -1,0 +1,531 @@
+# pages/3_Tablero_Jugadores.py
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+from pathlib import Path
+import pandas as pd
+import streamlit as st
+
+# =========================================================
+# STREAMLIT CONFIG (DEBE SER LO PRIMERO)
+# =========================================================
+st.set_page_config(page_title="Tablero Jugadores – Monterrey", layout="wide")
+
+from utils.loaders import load_per90
+from utils.filters import sidebar_filters
+from utils.scoring import compute_scoring
+from utils.radar_mty_plot import plot_radar
+from utils.role_config import (
+    get_macro_config,
+    get_detail_categories,
+    get_detail_metric_list,
+)
+
+# =========================================================
+# COLORES (IGUAL QUE PÁGINA 2)
+# =========================================================
+PRIMARY_BG = "#0B1F38"
+SECONDARY_BG = "#091325"
+ACCENT = "#6CA0DC"
+TEXT = "#FFFFFF"
+GOLD = "#c49308"
+
+# =========================================================
+# CSS (IGUAL QUE PÁGINA 2) -> fondo + sidebar + tablas + sliders
+# =========================================================
+st.markdown(
+    f"""
+    <style>
+        .stApp {{ background-color: {PRIMARY_BG}; }}
+        .block-container {{ padding-top: 0rem !important; }}
+
+        header[data-testid="stHeader"] {{ background-color: transparent; }}
+        header[data-testid="stHeader"] > div {{
+            background-color: {PRIMARY_BG};
+            box-shadow: none;
+        }}
+        header[data-testid="stHeader"] * {{ color: #FFFFFF !important; }}
+        header[data-testid="stHeader"] svg,
+        header[data-testid="stHeader"] path {{ fill: #FFFFFF !important; }}
+
+        [data-testid="stSidebar"] > div:first-child {{
+            background-color: {SECONDARY_BG};
+        }}
+
+        h1, h2, h3, h4, h5, h6, p, label {{
+            color: {TEXT} !important;
+        }}
+
+        div[data-baseweb="slider"] span {{
+            color: {GOLD} !important;
+            font-weight: 700 !important;
+        }}
+
+        table.mty-table {{
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            font-size: 0.90rem;
+        }}
+        table.mty-table thead {{ background-color: {PRIMARY_BG}; }}
+        table.mty-table thead th {{
+            color: #ffffff !important;
+            padding: 0.55rem 0.75rem;
+        }}
+        table.mty-table thead th:first-child {{
+            text-align: left !important;
+            padding-left: 12px !important;
+        }}
+        table.mty-table thead th:not(:first-child) {{
+            text-align: center !important;
+        }}
+
+        table.mty-table tbody td {{
+            color: #1f2933 !important;
+            padding: 0.55rem 0.75rem;
+        }}
+        table.mty-table tbody td:first-child {{
+            text-align: left !important;
+            padding-left: 12px !important;
+        }}
+        table.mty-table tbody td:not(:first-child) {{
+            text-align: center !important;
+        }}
+
+        table.mty-table tbody tr:nth-child(even) {{ background-color: #f4f6fb; }}
+        table.mty-table tbody tr:hover {{ background-color: #e8f0ff; }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <style>
+    div.stSlider > div[data-baseweb="slider"] > div[data-testid="stTickBar"] > div {
+        background: transparent !important;
+    }
+    div.stSlider > div[data-baseweb="slider"] > div > div {
+        background: #c49308 !important;
+        border-radius: 8px !important;
+        height: 6px !important;
+    }
+    div.stSlider > div[data-baseweb="slider"] > div > div > div[role="slider"] {
+        background-color: #c49308 !important;
+        box-shadow: 0 0 0 0.2rem rgba(196,147,8,0.3) !important;
+        border: 2px solid #ffffff !important;
+    }
+    div.stSlider > div[data-baseweb="slider"] > div > div > div > div {
+        color: #c49308 !important;
+        font-weight: 700 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# =========================================================
+# PATHS
+# =========================================================
+BASE_DIR = Path(__file__).resolve().parents[1]
+LOGO_PATH = BASE_DIR / "assets" / "monterrey_logo.png"
+PER90_PATH = BASE_DIR / "outputs" / "all_players_complete_2025_2026.csv"
+
+if not PER90_PATH.exists():
+    st.error(f"No encuentro el archivo base per90 en: {PER90_PATH}")
+    st.stop()
+
+# =========================================================
+# HELPERS
+# =========================================================
+def find_col(df: pd.DataFrame, candidates: list[str]) -> str | None:
+    for c in candidates:
+        if c in df.columns:
+            return c
+    return None
+
+
+def render_mty_table(df: pd.DataFrame, *, index: bool = False) -> None:
+    st.markdown(df.to_html(index=index, classes="mty-table"), unsafe_allow_html=True)
+
+
+def pct_rank_0_100(s: pd.Series) -> pd.Series:
+    x = pd.to_numeric(s, errors="coerce")
+    m = x.notna()
+    out = pd.Series(index=x.index, dtype="float64")
+    out.loc[m] = x.loc[m].rank(pct=True) * 100
+    out.loc[~m] = pd.NA
+    return out
+
+
+def make_key(df: pd.DataFrame, player_col: str, team_col: str) -> pd.Series:
+    return df[player_col].astype(str).str.strip() + "||" + df[team_col].astype(str).str.strip()
+
+
+def safe_int(x):
+    try:
+        if pd.isna(x):
+            return ""
+        return int(float(x))
+    except Exception:
+        return ""
+
+
+def safe_float2(x):
+    try:
+        if pd.isna(x):
+            return ""
+        return float(x)
+    except Exception:
+        return ""
+
+
+# =========================================================
+# HEADER
+# =========================================================
+c1, c2 = st.columns([1, 6])
+with c1:
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=90)
+with c2:
+    st.markdown("## Tablero Jugadores")
+    st.caption("Ficha individual + radar por categorías + radar detallado con leyenda.")
+
+st.markdown("---")
+
+# =========================================================
+# LOAD BASE + FILTERS
+# =========================================================
+df_base = load_per90(PER90_PATH)
+
+filters = sidebar_filters(df_base, show_position=True, show_minutes=True, show_team=True)
+pos = filters["position"]
+min_minutes = int(filters["min_minutes"])
+selected_teams = filters.get("teams", [])
+min_matches = 3
+
+# =========================================================
+# SCORING (cohorte filtrada)
+# =========================================================
+with st.spinner("Calculando scoring…"):
+    scores = compute_scoring(
+        per90_path=str(PER90_PATH),
+        position_key=pos,
+        min_minutes=min_minutes,
+        min_matches=min_matches,
+        selected_teams=selected_teams,
+    )
+
+if scores is None or scores.empty:
+    st.warning("No hay jugadores que cumplan los filtros.")
+    st.stop()
+
+# columnas clave en scores
+col_player = find_col(scores, ["player_name", "player", "Jugador"])
+col_team = find_col(scores, ["teams", "team_name", "Equipo"])
+col_minutes = find_col(scores, ["minutes", "Minutos"])
+col_matches = find_col(scores, ["matches", "PJ"])
+col_profile = find_col(scores, ["Flags", "Perfil"])
+col_score_overall = find_col(scores, ["Score_Overall", "score_overall", "score_total", "Score"])
+
+if col_player is None or col_team is None:
+    st.error("No encuentro columnas necesarias en scores: player_name/player y teams/team_name.")
+    st.stop()
+
+# selector de jugador
+labels_players = scores[col_player].astype(str) + " — " + scores[col_team].astype(str)
+player_choice = st.selectbox(
+    "Jugador",
+    options=list(range(len(scores))),
+    format_func=lambda i: labels_players.iloc[i],
+)
+player_row = scores.iloc[player_choice]
+player_key = (str(player_row[col_player]), str(player_row[col_team]))
+
+# =========================================================
+# FICHA (TABLA ESTILO mty-table)
+# =========================================================
+ficha = {
+    "Jugador": player_row[col_player] if col_player else "",
+    "Equipo": player_row[col_team] if col_team else "",
+    "Minutos": safe_int(player_row[col_minutes]) if col_minutes else "",
+    "PJ": safe_int(player_row[col_matches]) if col_matches else "",
+    "Score": safe_float2(player_row[col_score_overall]) if col_score_overall else "",
+    "Perfil": player_row[col_profile] if col_profile else "",
+}
+ficha_df = pd.DataFrame([ficha])
+if "Score" in ficha_df.columns:
+    ficha_df["Score"] = pd.to_numeric(ficha_df["Score"], errors="coerce").map(
+        lambda x: "" if pd.isna(x) else f"{x:.2f}"
+    )
+
+render_mty_table(ficha_df)
+st.markdown("---")
+
+# =========================================================
+# COMPARACIÓN (DEFAULT = SOLO JUGADOR)
+# =========================================================
+compare_mode = st.radio(
+    "Comparar contra",
+    ["Solo jugador", "Promedio", "Otro jugador"],
+    horizontal=True,
+    index=0,
+)
+
+second_row = None
+second_key = None
+second_name = None
+if compare_mode == "Otro jugador":
+    other_choice = st.selectbox(
+        "Jugador a comparar",
+        options=list(range(len(scores))),
+        index=0,
+        format_func=lambda i: labels_players.iloc[i],
+        key="other_player_select",
+    )
+    second_row = scores.iloc[other_choice]
+    second_key = (str(second_row[col_player]), str(second_row[col_team]))
+    second_name = str(second_row[col_player])
+
+# =========================================================
+# RADAR MACRO (categorías)
+# =========================================================
+st.subheader("Radar – Categorías del rol")
+
+macro = get_macro_config(pos)  # [(Score_col, label), ...]
+if not macro:
+    st.info("No hay mapeo de categorías para esta posición en role_config.py.")
+else:
+    macro_cols = [c for c, _ in macro]
+    macro_labels = [lab for _, lab in macro]
+
+    player_vals = [
+        float(player_row[c]) if (c in scores.columns and pd.notna(player_row[c])) else float("nan")
+        for c in macro_cols
+    ]
+
+    ref_vals = None
+    head_right = ""
+
+    if compare_mode == "Promedio":
+        ref_vals = [
+            float(pd.to_numeric(scores[c], errors="coerce").mean()) if c in scores.columns else float("nan")
+            for c in macro_cols
+        ]
+        head_right = "Promedio"
+    elif compare_mode == "Otro jugador" and second_row is not None:
+        ref_vals = [
+            float(second_row[c]) if (c in scores.columns and pd.notna(second_row[c])) else float("nan")
+            for c in macro_cols
+        ]
+        head_right = second_name or ""
+
+    low = [0] * len(macro_labels)
+    high = [100] * len(macro_labels)
+
+    head_left = f"{player_key[0]} | {player_key[1]}"
+    fig = plot_radar(
+        metrics=macro_labels,
+        values=player_vals,
+        reference=ref_vals,  # None si “Solo jugador”
+        low=low,
+        high=high,
+        head_left=head_left,
+        head_right=head_right,
+        figsize=(4.6, 4.6),
+    )
+    st.pyplot(fig, use_container_width=False)
+
+st.markdown("---")
+
+# =========================================================
+# RADAR DETALLADO
+# =========================================================
+st.subheader("Radar detallado (métricas)")
+
+value_mode = st.radio("Modo", ["Percentil", "Valor real"], horizontal=True, index=0)
+show_detail = st.toggle("Mostrar radar detallado", value=False)
+
+if show_detail:
+    base_player_col = find_col(df_base, ["player_name", "player", "Jugador"])
+    base_team_col = find_col(df_base, ["teams", "team_name", "Equipo"])
+    base_minutes_col = find_col(df_base, ["minutes", "Minutos"])
+
+    if base_player_col is None or base_team_col is None:
+        st.error("df_base no tiene columnas de jugador/equipo necesarias para radar detallado.")
+        st.stop()
+
+    df_cohort = df_base.copy()
+
+    # filtro equipos
+    if selected_teams and "teams" in df_cohort.columns:
+        df_cohort = df_cohort[df_cohort["teams"].astype(str).isin([str(t) for t in selected_teams])].copy()
+
+    # filtro minutos
+    if base_minutes_col:
+        df_cohort = df_cohort[pd.to_numeric(df_cohort[base_minutes_col], errors="coerce") >= min_minutes].copy()
+
+    # restringir a la cohorte del scoring
+    key_scores = make_key(scores, col_player, col_team).unique()
+    key_cohort = make_key(df_cohort, base_player_col, base_team_col)
+    df_cohort = df_cohort[key_cohort.isin(key_scores)].copy()
+
+    # index del jugador en df_cohort
+    key_series = make_key(df_cohort, base_player_col, base_team_col)
+    target_key = f"{player_key[0].strip()}||{player_key[1].strip()}"
+    idx_list = key_series[key_series == target_key].index
+    player_idx = idx_list[0] if len(idx_list) else None
+
+    if player_idx is None:
+        st.warning("El jugador no está en la cohorte base para el radar detallado (revisá llaves player/team).")
+        st.stop()
+
+    detail_opts = get_detail_categories(pos)
+    if not detail_opts:
+        st.info("No hay categorías detalladas configuradas para esta posición en role_config.py.")
+        st.stop()
+
+    # concatenar TODAS las categorías (todas juntas)
+    metric_lists: list[tuple[str, float, bool]] = []
+    metric_labels: list[str] = []
+
+    for cat_name in detail_opts:
+        ml = get_detail_metric_list(pos, cat_name, base_dir=BASE_DIR)  # [(metric, w, invert), ...]
+        if not ml:
+            continue
+        for metric, w, inv in ml:
+            metric_lists.append((metric, w, inv))
+            metric_labels.append(f"{cat_name}: {metric}")
+
+    if not metric_lists:
+        st.warning("No pude leer listas detalladas desde role_config.")
+        st.stop()
+
+    # construir ejes robustos (low/high match)
+    final_labels: list[str] = []
+    vals_player: list[float] = []
+    vals_ref: list[float] = []
+    low: list[float] = []
+    high: list[float] = []
+
+    for (metric, w, inv), lab in zip(metric_lists, metric_labels):
+        if metric not in df_cohort.columns:
+            continue
+
+        s0 = pd.to_numeric(df_cohort[metric], errors="coerce")
+        if s0.dropna().empty:
+            continue
+
+        # en VALOR REAL: si invert=True, transformo a -x para que "más alto = mejor"
+        s = (-s0) if (value_mode == "Valor real" and inv) else s0
+
+        if value_mode == "Percentil":
+            p = pct_rank_0_100(s)
+            v = p.loc[player_idx]
+            if pd.isna(v):
+                continue
+            v = float(v)
+            r = float(pd.to_numeric(p, errors="coerce").mean())
+
+            final_labels.append(lab)
+            vals_player.append(v)
+            vals_ref.append(r)
+            low.append(0.0)
+            high.append(100.0)
+
+        else:
+            v = pd.to_numeric(s.loc[player_idx], errors="coerce")
+            if pd.isna(v):
+                continue
+            v = float(v)
+            r = float(s.mean())
+
+            final_labels.append(lab)
+            vals_player.append(v)
+            vals_ref.append(r)
+            low.append(float(s.min()))
+            high.append(float(s.max()))
+
+    if len(final_labels) < 3:
+        st.warning("Muy pocas métricas disponibles para armar el radar detallado (revisá nombres de columnas).")
+        st.stop()
+
+    # referencia según compare_mode
+    ref_vals = None
+    head_right = ""
+
+    if compare_mode == "Promedio":
+        ref_vals = vals_ref
+        head_right = "Promedio"
+
+    elif compare_mode == "Otro jugador" and second_key is not None:
+        target_key2 = f"{second_key[0].strip()}||{second_key[1].strip()}"
+        idx2_list = key_series[key_series == target_key2].index
+        second_idx = idx2_list[0] if len(idx2_list) else None
+
+        if second_idx is None:
+            st.caption("El jugador a comparar no está en la cohorte base; muestro solo el principal.")
+        else:
+            vals_other: list[float] = []
+            labs_other: list[str] = []
+
+            for (metric, w, inv), lab in zip(metric_lists, metric_labels):
+                if metric not in df_cohort.columns:
+                    continue
+
+                s0 = pd.to_numeric(df_cohort[metric], errors="coerce")
+                if s0.dropna().empty:
+                    continue
+
+                s = (-s0) if (value_mode == "Valor real" and inv) else s0
+
+                if value_mode == "Percentil":
+                    p = pct_rank_0_100(s)
+                    v2 = p.loc[second_idx]
+                    if pd.isna(v2):
+                        continue
+                    v2 = float(v2)
+                else:
+                    v2 = pd.to_numeric(s.loc[second_idx], errors="coerce")
+                    if pd.isna(v2):
+                        continue
+                    v2 = float(v2)
+
+                labs_other.append(lab)
+                vals_other.append(v2)
+
+            if labs_other == final_labels and len(vals_other) == len(vals_player):
+                ref_vals = vals_other
+                head_right = second_name or ""
+            else:
+                st.caption("El jugador a comparar tiene métricas faltantes; muestro solo el principal.")
+
+    # radar con números + leyenda al costado
+    num_labels = [str(i + 1) for i in range(len(final_labels))]
+
+    left, right = st.columns([1.15, 1.35], gap="large")
+
+    with left:
+        head_left = f"{player_key[0]} | {player_key[1]}"
+        fig2 = plot_radar(
+            metrics=num_labels,          # números
+            values=vals_player,
+            reference=ref_vals,          # None si solo jugador
+            low=low,
+            high=high,
+            head_left=head_left,
+            head_right=head_right,
+            figsize=(5.8, 5.8),
+        )
+        st.pyplot(fig2, use_container_width=False)
+
+    with right:
+        st.markdown("#### Leyenda de métricas")
+        legend_df = pd.DataFrame({
+            "#": list(range(1, len(final_labels) + 1)),
+            "Métrica": final_labels,
+        })
+        render_mty_table(legend_df)
