@@ -106,7 +106,7 @@ def run_volante_scoring(
     
     # --- Cargar datos ---
     print(f"\n📂 Cargando: {per90_csv}")
-    per90 = pd.read_csv(per90_csv, low_memory=False, encoding='latin1')
+    per90 = pd.read_csv(per90_csv, low_memory=False, encoding='utf-8-sig')
     print(f"✓ Total jugadores en archivo: {len(per90):,}")
     
     # --- Filtrar por posición ---

@@ -17,7 +17,7 @@ def _fix_mojibake_series(s: pd.Series) -> pd.Series:
         if val is None:
             return val
         try:
-            return val.encode("latin1", errors="ignore").decode("utf-8", errors="ignore")
+            return val.encode("latin1", errors="strict").decode("utf-8", errors="strict")
         except Exception:
             return val
 
@@ -33,10 +33,19 @@ def load_per90(path: Path) -> pd.DataFrame:
     try:
         df = pd.read_csv(path, low_memory=False, encoding="utf-8-sig")
     except Exception:
-        df = pd.read_csv(path, low_memory=False, encoding="cp1252")
+        try:
+            df = pd.read_csv(path, low_memory=False, encoding="utf-8")
+        except Exception:
+            df = pd.read_csv(path, low_memory=False, encoding="cp1252")
+
 
     for col in ["player_name", "team_name", "player", "team", "Jugador", "Equipo", "Flags", "Perfil"]:
         if col in df.columns:
+            before = df[col].astype("string")
             df[col] = _fix_mojibake_series(df[col])
+            after = df[col].astype("string")
+            if (before != after).any():
+                st.warning(f"Se detectó y corrigió mojibake en columna '{col}' para {path.name}")
+
 
     return df
