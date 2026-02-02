@@ -6,6 +6,9 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 # =========================================================
 # STREAMLIT CONFIG (DEBE SER LO PRIMERO)
 # =========================================================
@@ -183,6 +186,296 @@ def safe_float2(x):
         return ""
 
 
+
+def plot_lollipop_mty(
+    labels: list[str],
+    values: list[float],
+    reference: list[float] | None,
+    *,
+    xlim: tuple[float, float],
+    title_left: str,
+    title_right: str = "",
+    value_fmt: str = "{:.1f}",
+    sort_by: str = "value",
+    fig_w: float = 7.0,
+    row_h: float = 0.30,
+    min_h: float = 3.2,
+) -> "plt.Figure":
+    """Lollipop horizontal estilo Monterrey.
+
+    - Fondo dark (PRIMARY_BG)
+    - Puntos jugador (ACCENT)
+    - Referencia (GOLD) si existe
+    """
+
+    dfp = pd.DataFrame({"label": labels, "value": values})
+    if reference is not None:
+        dfp["ref"] = reference
+
+    dfp = dfp.dropna(subset=["value"]).copy()
+    if dfp.empty:
+        fig = plt.figure(figsize=(fig_w, min_h))
+        fig.patch.set_facecolor(PRIMARY_BG)
+        return fig
+
+    if sort_by == "value":
+        dfp = dfp.sort_values("value", ascending=True)
+    elif sort_by == "abs":
+        dfp = dfp.reindex(dfp["value"].abs().sort_values().index)
+
+    y = np.arange(len(dfp))
+
+    fig_h = max(min_h, row_h * len(dfp) + 1.1)
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    fig.patch.set_facecolor(PRIMARY_BG)
+    ax.set_facecolor(PRIMARY_BG)
+
+    ax.grid(axis="x", color="white", alpha=0.08, linewidth=1)
+    ax.grid(axis="y", color="white", alpha=0.0)
+
+    # baseline + lollipops
+    for yi, v in zip(y, dfp["value"].tolist()):
+        ax.hlines(yi, xlim[0], v, color=ACCENT, alpha=0.35, linewidth=3, zorder=1)
+
+    ax.scatter(
+        dfp["value"],
+        y,
+        s=90,
+        color=ACCENT,
+        edgecolor="white",
+        linewidth=1.2,
+        zorder=3,
+        label="Jugador",
+    )
+
+    if reference is not None and "ref" in dfp.columns:
+        ax.scatter(
+            dfp["ref"],
+            y,
+            s=60,
+            color=GOLD,
+            edgecolor="white",
+            linewidth=1.0,
+            zorder=4,
+            label=title_right or "Referencia",
+        )
+
+        # conector fino (dumbbell)
+        for yi, v, r in zip(y, dfp["value"].tolist(), dfp["ref"].tolist()):
+            if pd.isna(r):
+                continue
+            ax.hlines(yi, min(v, r), max(v, r), color="white", alpha=0.10, linewidth=2, zorder=2)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(dfp["label"].tolist(), fontsize=10.5, color=TEXT)
+
+    ax.set_xlim(*xlim)
+    ax.tick_params(axis="x", colors=TEXT, labelsize=10)
+
+    for s in ax.spines.values():
+        s.set_visible(False)
+
+    ax.text(
+        0.0,
+        1.04,
+        title_left,
+        transform=ax.transAxes,
+        ha="left",
+        va="bottom",
+        color=TEXT,
+        fontsize=13,
+        fontweight="bold",
+    )
+    if title_right:
+        ax.text(
+            1.0,
+            1.04,
+            title_right,
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            color=GOLD,
+            fontsize=11,
+            fontweight="bold",
+        )
+
+    # value annotations (sutiles)
+    for yi, v in zip(y, dfp["value"].tolist()):
+        ax.text(
+            v,
+            yi,
+            "  " + value_fmt.format(v),
+            ha="left",
+            va="center",
+            fontsize=9.2,
+            color="white",
+            alpha=0.85,
+            zorder=5,
+        )
+
+    if reference is not None and "ref" in dfp.columns:
+        for yi, r in zip(y, dfp["ref"].tolist()):
+            if pd.isna(r):
+                continue
+            ax.text(
+                r,
+                yi,
+                "  " + value_fmt.format(r),
+                ha="left",
+                va="center",
+                fontsize=9.0,
+                color=GOLD,
+                alpha=0.95,
+                zorder=6,
+            )
+
+    if reference is not None:
+        leg = ax.legend(
+            loc="lower right",
+            frameon=True,
+            facecolor=SECONDARY_BG,
+            edgecolor="none",
+            fontsize=9.2,
+        )
+        for t in leg.get_texts():
+            t.set_color(TEXT)
+
+    fig.subplots_adjust(left=0.42, right=0.98, top=0.90, bottom=0.10)
+
+    return fig
+
+    if sort_by == "value":
+        dfp = dfp.sort_values("value", ascending=True)
+    elif sort_by == "abs":
+        dfp = dfp.reindex(dfp["value"].abs().sort_values().index)
+
+    y = np.arange(len(dfp))
+
+    fig_h = max(4.8, 0.38 * len(dfp) + 1.2)
+    fig, ax = plt.subplots(figsize=(10.8, fig_h))
+    fig.patch.set_facecolor(PRIMARY_BG)
+    ax.set_facecolor(PRIMARY_BG)
+
+    # grid
+    ax.grid(axis="x", color="white", alpha=0.08, linewidth=1)
+    ax.grid(axis="y", color="white", alpha=0.0)
+
+    # baseline + lollipops
+    for yi, v in zip(y, dfp["value"].tolist()):
+        ax.hlines(yi, xlim[0], v, color=ACCENT, alpha=0.35, linewidth=3, zorder=1)
+
+    ax.scatter(
+        dfp["value"],
+        y,
+        s=90,
+        color=ACCENT,
+        edgecolor="white",
+        linewidth=1.2,
+        zorder=3,
+        label="Jugador",
+    )
+
+    if reference is not None and "ref" in dfp.columns:
+        ax.scatter(
+            dfp["ref"],
+            y,
+            s=60,
+            color=GOLD,
+            edgecolor="white",
+            linewidth=1.0,
+            zorder=4,
+            label=title_right or "Referencia",
+        )
+
+        # conector fino (dumbbell)
+        for yi, v, r in zip(y, dfp["value"].tolist(), dfp["ref"].tolist()):
+            if pd.isna(r):
+                continue
+            ax.hlines(yi, min(v, r), max(v, r), color="white", alpha=0.10, linewidth=2, zorder=2)
+
+    # labels eje Y
+    ax.set_yticks(y)
+    ax.set_yticklabels(dfp["label"].tolist(), fontsize=10.5, color=TEXT)
+
+    # x
+    ax.set_xlim(*xlim)
+    ax.tick_params(axis="x", colors=TEXT, labelsize=10)
+
+    # spines
+    for s in ax.spines.values():
+        s.set_visible(False)
+
+    # títulos (izq/der)
+    ax.text(
+        0.0,
+        1.04,
+        title_left,
+        transform=ax.transAxes,
+        ha="left",
+        va="bottom",
+        color=TEXT,
+        fontsize=14,
+        fontweight="bold",
+    )
+    if title_right:
+        ax.text(
+            1.0,
+            1.04,
+            title_right,
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            color=GOLD,
+            fontsize=12,
+            fontweight="bold",
+        )
+
+    # value annotations (sutiles)
+    for yi, v in zip(y, dfp["value"].tolist()):
+        ax.text(
+            v,
+            yi,
+            "  " + value_fmt.format(v),
+            ha="left",
+            va="center",
+            fontsize=9.5,
+            color="white",
+            alpha=0.85,
+            zorder=5,
+        )
+
+    if reference is not None and "ref" in dfp.columns:
+        for yi, r in zip(y, dfp["ref"].tolist()):
+            if pd.isna(r):
+                continue
+            ax.text(
+                r,
+                yi,
+                "  " + value_fmt.format(r),
+                ha="left",
+                va="center",
+                fontsize=9.2,
+                color=GOLD,
+                alpha=0.95,
+                zorder=6,
+            )
+
+    # legend
+    if reference is not None:
+        leg = ax.legend(
+            loc="lower right",
+            frameon=True,
+            facecolor=SECONDARY_BG,
+            edgecolor="none",
+            fontsize=9.5,
+        )
+        for t in leg.get_texts():
+            t.set_color(TEXT)
+
+    plt.tight_layout(pad=2)
+    return fig
+
+
 # =========================================================
 # HEADER
 # =========================================================
@@ -192,7 +485,7 @@ with c1:
         st.image(str(LOGO_PATH), width=90)
 with c2:
     st.markdown("## Tablero Jugadores")
-    st.caption("Ficha individual + radar por categorías + radar detallado con leyenda.")
+    st.caption("Ficha individual + radar por categorías + detalle de métricas (lollipop).")
 
 st.markdown("---")
 
@@ -290,242 +583,268 @@ if compare_mode == "Otro jugador":
     second_key = (str(second_row[col_player]), str(second_row[col_team]))
     second_name = str(second_row[col_player])
 
+
 # =========================================================
-# RADAR MACRO (categorías)
+# RADAR MACRO (categorías) + LOLLIPOP (detalle) EN LA MISMA FILA
 # =========================================================
-st.subheader("Radar – Categorías del rol")
+st.subheader("Perfil del jugador")
 
-macro = get_macro_config(pos)  # [(Score_col, label), ...]
-if not macro:
-    st.info("No hay mapeo de categorías para esta posición en role_config.py.")
-else:
-    macro_cols = [c for c, _ in macro]
-    macro_labels = [lab for _, lab in macro]
+col_radar, col_lolli = st.columns([1.0, 1.35], gap="large")
 
-    player_vals = [
-        float(player_row[c]) if (c in scores.columns and pd.notna(player_row[c])) else float("nan")
-        for c in macro_cols
-    ]
+# -------------------------
+# IZQUIERDA: RADAR MACRO
+# -------------------------
+with col_radar:
+    st.markdown("#### Radar – Categorías del rol")
 
-    ref_vals = None
-    head_right = ""
+    macro = get_macro_config(pos)  # [(Score_col, label), ...]
+    if not macro:
+        st.info("No hay mapeo de categorías para esta posición en role_config.py.")
+    else:
+        macro_cols = [c for c, _ in macro]
+        macro_labels = [lab for _, lab in macro]
 
-    if compare_mode == "Promedio":
-        ref_vals = [
-            float(pd.to_numeric(scores[c], errors="coerce").mean()) if c in scores.columns else float("nan")
+        player_vals = [
+            float(player_row[c]) if (c in scores.columns and pd.notna(player_row[c])) else float("nan")
             for c in macro_cols
         ]
-        head_right = "Promedio"
-    elif compare_mode == "Otro jugador" and second_row is not None:
-        ref_vals = [
-            float(second_row[c]) if (c in scores.columns and pd.notna(second_row[c])) else float("nan")
-            for c in macro_cols
-        ]
-        head_right = second_name or ""
 
-    low = [0] * len(macro_labels)
-    high = [100] * len(macro_labels)
+        ref_vals_macro = None
+        head_right_macro = ""
 
-    head_left = f"{player_key[0]} | {player_key[1]}"
-    fig = plot_radar(
-        metrics=macro_labels,
-        values=player_vals,
-        reference=ref_vals,  # None si “Solo jugador”
-        low=low,
-        high=high,
-        head_left=head_left,
-        head_right=head_right,
-        figsize=(4.6, 4.6),
-    )
-    st.pyplot(fig, use_container_width=False)
+        if compare_mode == "Promedio":
+            ref_vals_macro = [
+                float(pd.to_numeric(scores[c], errors="coerce").mean()) if c in scores.columns else float("nan")
+                for c in macro_cols
+            ]
+            head_right_macro = "Promedio"
+        elif compare_mode == "Otro jugador" and second_row is not None:
+            ref_vals_macro = [
+                float(second_row[c]) if (c in scores.columns and pd.notna(second_row[c])) else float("nan")
+                for c in macro_cols
+            ]
+            head_right_macro = second_name or ""
 
-st.markdown("---")
+        low = [0] * len(macro_labels)
+        high = [100] * len(macro_labels)
 
-# =========================================================
-# RADAR DETALLADO
-# =========================================================
-st.subheader("Radar detallado (métricas)")
-
-value_mode = st.radio("Modo", ["Percentil", "Valor real"], horizontal=True, index=0)
-show_detail = st.toggle("Mostrar radar detallado", value=False)
-
-if show_detail:
-    base_player_col = find_col(df_base, ["player_name", "player", "Jugador"])
-    base_team_col = find_col(df_base, ["teams", "team_name", "Equipo"])
-    base_minutes_col = find_col(df_base, ["minutes", "Minutos"])
-
-    if base_player_col is None or base_team_col is None:
-        st.error("df_base no tiene columnas de jugador/equipo necesarias para radar detallado.")
-        st.stop()
-
-    df_cohort = df_base.copy()
-
-    # filtro equipos
-    if selected_teams and "teams" in df_cohort.columns:
-        df_cohort = df_cohort[df_cohort["teams"].astype(str).isin([str(t) for t in selected_teams])].copy()
-
-    # filtro minutos
-    if base_minutes_col:
-        df_cohort = df_cohort[pd.to_numeric(df_cohort[base_minutes_col], errors="coerce") >= min_minutes].copy()
-
-    # restringir a la cohorte del scoring
-    key_scores = make_key(scores, col_player, col_team).unique()
-    key_cohort = make_key(df_cohort, base_player_col, base_team_col)
-    df_cohort = df_cohort[key_cohort.isin(key_scores)].copy()
-
-    # index del jugador en df_cohort
-    key_series = make_key(df_cohort, base_player_col, base_team_col)
-    target_key = f"{player_key[0].strip()}||{player_key[1].strip()}"
-    idx_list = key_series[key_series == target_key].index
-    player_idx = idx_list[0] if len(idx_list) else None
-
-    if player_idx is None:
-        st.warning("El jugador no está en la cohorte base para el radar detallado (revisá llaves player/team).")
-        st.stop()
-
-    detail_opts = get_detail_categories(pos)
-    if not detail_opts:
-        st.info("No hay categorías detalladas configuradas para esta posición en role_config.py.")
-        st.stop()
-
-    # concatenar TODAS las categorías (todas juntas)
-    metric_lists: list[tuple[str, float, bool]] = []
-    metric_labels: list[str] = []
-
-    for cat_name in detail_opts:
-        ml = get_detail_metric_list(pos, cat_name, base_dir=BASE_DIR)  # [(metric, w, invert), ...]
-        if not ml:
-            continue
-        for metric, w, inv in ml:
-            metric_lists.append((metric, w, inv))
-            metric_labels.append(f"{cat_name}: {metric}")
-
-    if not metric_lists:
-        st.warning("No pude leer listas detalladas desde role_config.")
-        st.stop()
-
-    # construir ejes robustos (low/high match)
-    final_labels: list[str] = []
-    vals_player: list[float] = []
-    vals_ref: list[float] = []
-    low: list[float] = []
-    high: list[float] = []
-
-    for (metric, w, inv), lab in zip(metric_lists, metric_labels):
-        if metric not in df_cohort.columns:
-            continue
-
-        s0 = pd.to_numeric(df_cohort[metric], errors="coerce")
-        if s0.dropna().empty:
-            continue
-
-        # en VALOR REAL: si invert=True, transformo a -x para que "más alto = mejor"
-        s = (-s0) if (value_mode == "Valor real" and inv) else s0
-
-        if value_mode == "Percentil":
-            p = pct_rank_0_100(s)
-            v = p.loc[player_idx]
-            if pd.isna(v):
-                continue
-            v = float(v)
-            r = float(pd.to_numeric(p, errors="coerce").mean())
-
-            final_labels.append(lab)
-            vals_player.append(v)
-            vals_ref.append(r)
-            low.append(0.0)
-            high.append(100.0)
-
-        else:
-            v = pd.to_numeric(s.loc[player_idx], errors="coerce")
-            if pd.isna(v):
-                continue
-            v = float(v)
-            r = float(s.mean())
-
-            final_labels.append(lab)
-            vals_player.append(v)
-            vals_ref.append(r)
-            low.append(float(s.min()))
-            high.append(float(s.max()))
-
-    if len(final_labels) < 3:
-        st.warning("Muy pocas métricas disponibles para armar el radar detallado (revisá nombres de columnas).")
-        st.stop()
-
-    # referencia según compare_mode
-    ref_vals = None
-    head_right = ""
-
-    if compare_mode == "Promedio":
-        ref_vals = vals_ref
-        head_right = "Promedio"
-
-    elif compare_mode == "Otro jugador" and second_key is not None:
-        target_key2 = f"{second_key[0].strip()}||{second_key[1].strip()}"
-        idx2_list = key_series[key_series == target_key2].index
-        second_idx = idx2_list[0] if len(idx2_list) else None
-
-        if second_idx is None:
-            st.caption("El jugador a comparar no está en la cohorte base; muestro solo el principal.")
-        else:
-            vals_other: list[float] = []
-            labs_other: list[str] = []
-
-            for (metric, w, inv), lab in zip(metric_lists, metric_labels):
-                if metric not in df_cohort.columns:
-                    continue
-
-                s0 = pd.to_numeric(df_cohort[metric], errors="coerce")
-                if s0.dropna().empty:
-                    continue
-
-                s = (-s0) if (value_mode == "Valor real" and inv) else s0
-
-                if value_mode == "Percentil":
-                    p = pct_rank_0_100(s)
-                    v2 = p.loc[second_idx]
-                    if pd.isna(v2):
-                        continue
-                    v2 = float(v2)
-                else:
-                    v2 = pd.to_numeric(s.loc[second_idx], errors="coerce")
-                    if pd.isna(v2):
-                        continue
-                    v2 = float(v2)
-
-                labs_other.append(lab)
-                vals_other.append(v2)
-
-            if labs_other == final_labels and len(vals_other) == len(vals_player):
-                ref_vals = vals_other
-                head_right = second_name or ""
-            else:
-                st.caption("El jugador a comparar tiene métricas faltantes; muestro solo el principal.")
-
-    # radar con números + leyenda al costado
-    num_labels = [str(i + 1) for i in range(len(final_labels))]
-
-    left, right = st.columns([1.15, 1.35], gap="large")
-
-    with left:
         head_left = f"{player_key[0]} | {player_key[1]}"
-        fig2 = plot_radar(
-            metrics=num_labels,          # números
-            values=vals_player,
-            reference=ref_vals,          # None si solo jugador
+        fig = plot_radar(
+            metrics=macro_labels,
+            values=player_vals,
+            reference=ref_vals_macro,  # None si “Solo jugador”
             low=low,
             high=high,
             head_left=head_left,
-            head_right=head_right,
-            figsize=(5.8, 5.8),
+            head_right=head_right_macro,
+            figsize=(4.1, 4.1),  # más chico para encajar con el lollipop
         )
-        st.pyplot(fig2, use_container_width=False)
+        st.pyplot(fig, use_container_width=True)
 
-    with right:
-        st.markdown("#### Leyenda de métricas")
-        legend_df = pd.DataFrame({
-            "#": list(range(1, len(final_labels) + 1)),
-            "Métrica": final_labels,
-        })
-        render_mty_table(legend_df)
+# -------------------------
+# DERECHA: LOLLIPOP
+# -------------------------
+with col_lolli:
+    st.markdown("#### Detalle – Lollipop (métricas)")
+
+    c_mode, c_toggle = st.columns([0.72, 0.28], gap="small")
+
+    with c_mode:
+        value_mode = st.radio(
+            "Modo",
+            ["Percentil", "Valor real"],
+            horizontal=True,
+            index=0,
+            key="lolli_mode",
+        )
+
+    with c_toggle:
+        # spacer para alinear visualmente con la radio horizontal
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        show_detail = st.toggle("Mostrar detalle", value=True, key="lolli_toggle")
+
+    if show_detail:
+        base_player_col = find_col(df_base, ["player_name", "player", "Jugador"])
+        base_team_col = find_col(df_base, ["teams", "team_name", "Equipo"])
+        base_minutes_col = find_col(df_base, ["minutes", "Minutos"])
+
+        if base_player_col is None or base_team_col is None:
+            st.error("df_base no tiene columnas de jugador/equipo necesarias para el detalle (lollipop).")
+            st.stop()
+
+        df_cohort = df_base.copy()
+
+        # filtro equipos
+        if selected_teams and "teams" in df_cohort.columns:
+            df_cohort = df_cohort[df_cohort["teams"].astype(str).isin([str(t) for t in selected_teams])].copy()
+
+        # filtro minutos
+        if base_minutes_col:
+            df_cohort = df_cohort[pd.to_numeric(df_cohort[base_minutes_col], errors="coerce") >= min_minutes].copy()
+
+        # restringir a la cohorte del scoring
+        key_scores = make_key(scores, col_player, col_team).unique()
+        key_cohort = make_key(df_cohort, base_player_col, base_team_col)
+        df_cohort = df_cohort[key_cohort.isin(key_scores)].copy()
+
+        # index del jugador en df_cohort
+        key_series = make_key(df_cohort, base_player_col, base_team_col)
+        target_key = f"{player_key[0].strip()}||{player_key[1].strip()}"
+        idx_list = key_series[key_series == target_key].index
+        player_idx = idx_list[0] if len(idx_list) else None
+
+        if player_idx is None:
+            st.warning("El jugador no está en la cohorte base para el detalle (revisá llaves player/team).")
+            st.stop()
+
+        detail_opts = get_detail_categories(pos)
+        if not detail_opts:
+            st.info("No hay categorías detalladas configuradas para esta posición en role_config.py.")
+            st.stop()
+
+        # concatenar TODAS las categorías (todas juntas)
+        metric_lists: list[tuple[str, float, bool]] = []
+        metric_labels: list[str] = []
+
+        for cat_name in detail_opts:
+            ml = get_detail_metric_list(pos, cat_name, base_dir=BASE_DIR)  # [(metric, w, invert), ...]
+            if not ml:
+                continue
+            for metric, w, inv in ml:
+                metric_lists.append((metric, w, inv))
+                metric_labels.append(f"{cat_name}: {metric}")
+
+        if not metric_lists:
+            st.warning("No pude leer listas detalladas desde role_config.")
+            st.stop()
+
+        # construir ejes robustos (low/high match)
+        final_labels: list[str] = []
+        vals_player: list[float] = []
+        vals_ref: list[float] = []
+
+        for (metric, w, inv), lab in zip(metric_lists, metric_labels):
+            if metric not in df_cohort.columns:
+                continue
+
+            s0 = pd.to_numeric(df_cohort[metric], errors="coerce")
+            if s0.dropna().empty:
+                continue
+
+            # en VALOR REAL: si invert=True, transformo a -x para que "más alto = mejor"
+            s = (-s0) if (value_mode == "Valor real" and inv) else s0
+
+            if value_mode == "Percentil":
+                p = pct_rank_0_100(s)
+                v = p.loc[player_idx]
+                if pd.isna(v):
+                    continue
+                v = float(v)
+                r = float(pd.to_numeric(p, errors="coerce").mean())
+
+                final_labels.append(lab)
+                vals_player.append(v)
+                vals_ref.append(r)
+
+            else:
+                v = pd.to_numeric(s.loc[player_idx], errors="coerce")
+                if pd.isna(v):
+                    continue
+                v = float(v)
+                r = float(s.mean())
+
+                final_labels.append(lab)
+                vals_player.append(v)
+                vals_ref.append(r)
+
+        if len(final_labels) < 3:
+            st.warning("Muy pocas métricas disponibles para armar el detalle (revisá nombres de columnas).")
+            st.stop()
+
+        # referencia según compare_mode
+        ref_vals = None
+        head_right = ""
+
+        if compare_mode == "Promedio":
+            ref_vals = vals_ref
+            head_right = "Promedio"
+
+        elif compare_mode == "Otro jugador" and second_key is not None:
+            target_key2 = f"{second_key[0].strip()}||{second_key[1].strip()}"
+            idx2_list = key_series[key_series == target_key2].index
+            second_idx = idx2_list[0] if len(idx2_list) else None
+
+            if second_idx is None:
+                st.caption("El jugador a comparar no está en la cohorte base; muestro solo el principal.")
+            else:
+                vals_other: list[float] = []
+                labs_other: list[str] = []
+
+                for (metric, w, inv), lab in zip(metric_lists, metric_labels):
+                    if metric not in df_cohort.columns:
+                        continue
+
+                    s0 = pd.to_numeric(df_cohort[metric], errors="coerce")
+                    if s0.dropna().empty:
+                        continue
+
+                    s = (-s0) if (value_mode == "Valor real" and inv) else s0
+
+                    if value_mode == "Percentil":
+                        p = pct_rank_0_100(s)
+                        v2 = p.loc[second_idx]
+                        if pd.isna(v2):
+                            continue
+                        v2 = float(v2)
+                    else:
+                        v2 = pd.to_numeric(s.loc[second_idx], errors="coerce")
+                        if pd.isna(v2):
+                            continue
+                        v2 = float(v2)
+
+                    labs_other.append(lab)
+                    vals_other.append(v2)
+
+                if labs_other == final_labels and len(vals_other) == len(vals_player):
+                    ref_vals = vals_other
+                    head_right = second_name or ""
+                else:
+                    st.caption("El jugador a comparar tiene métricas faltantes; muestro solo el principal.")
+
+        # Ejes / formato
+        if value_mode == "Percentil":
+            xlim = (0.0, 100.0)
+            value_fmt = "{:.0f}"
+        else:
+            v_series = pd.Series(vals_player, dtype="float64")
+            r_series = pd.Series(ref_vals, dtype="float64") if ref_vals is not None else None
+            all_vals = v_series.copy()
+            if r_series is not None:
+                all_vals = pd.concat([all_vals, r_series], ignore_index=True)
+            lo = float(np.nanpercentile(all_vals, 1))
+            hi = float(np.nanpercentile(all_vals, 99))
+            if lo == hi:
+                lo, hi = lo - 1.0, hi + 1.0
+            pad = 0.06 * (hi - lo)
+            xlim = (lo - pad, hi + pad)
+            value_fmt = "{:.2f}"
+
+        title_left = f"{player_key[0]} | {player_key[1]}"
+        title_right = head_right
+
+        fig_lolli = plot_lollipop_mty(
+            labels=final_labels,
+            values=vals_player,
+            reference=ref_vals,
+            xlim=xlim,
+            title_left=title_left,
+            title_right=title_right,
+            value_fmt=value_fmt,
+            sort_by="value",
+            fig_w=7.0,
+            row_h=0.28,
+            min_h=3.1,
+        )
+        st.pyplot(fig_lolli, use_container_width=True)
+
+st.markdown("---")
