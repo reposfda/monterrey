@@ -188,8 +188,7 @@ def run_position_scoring(
         "Score_Profundidad": DEPTH,
         "Score_Calidad": QUALITY,
         "Score_Presion": PRESS,
-        "Score_Def_Exec": DEF_EXEC,
-        "Score_Def_OBV": DEF_OBV,
+        # OJO: Defensivo NO entra directo acá para que queden 4 categorías finales
     }
     
     # Pesos de categorías para Score_Overall
@@ -243,6 +242,15 @@ def run_position_scoring(
             base[cat] = np.nan
             print(f"⚠️  No se pudo calcular {cat} (todas las columnas faltantes)")
     
+    # --- Subscores defensivos (internos) para armar Score_Defensivo
+    def _calc_subscore(items, out_col):
+        pct_items = [(f"pct__{col}", w) for col, w, _ in items if f"pct__{col}" in base.columns]
+        base[out_col] = wavg(base, pct_items) if pct_items else np.nan
+
+    _calc_subscore(DEF_EXEC, "Score_Def_Exec")
+    _calc_subscore(DEF_OBV, "Score_Def_OBV")
+
+
     # Defensivo final (combina Ejecución + OBV)
     if "Score_Def_Exec" in base.columns and "Score_Def_OBV" in base.columns:
         base["Score_Defensivo"] = (
@@ -316,8 +324,7 @@ def run_position_scoring(
         "player_id", "player_name", "team_name", "matches", "minutes",
         "primary_position", "primary_position_share",
         "Score_Profundidad", "Score_Calidad", "Score_Presion",
-        "Score_Def_Exec", "Score_Def_OBV", "Score_Defensivo",
-        "Score_Overall",
+        "Score_Defensivo","Score_Overall",
         "Flag_Profundos", "Flag_Tecnicos", "Flag_Presionantes", "Flag_Protectores",
         "Flags",
     ]
