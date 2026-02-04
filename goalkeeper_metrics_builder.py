@@ -29,6 +29,12 @@ Métricas calculadas (todas prefijadas con 'gk_'):
     gk_actions_outside_box_per90                    Acciones fuera del área por 90
     gk_aggressive_distance_avg                      Distancia promedio de juego (x)
 
+IMPORTANTE:
+  - PENALTIES EXCLUIDOS: Los tiros penales NO se incluyen en goals_prevented.
+    Razón: PSxG de penalties (~0.76-0.80) sesga la métrica artificialmente.
+  - Own goals SÍ se incluyen en goals_conceded_total pero NO afectan goals_prevented
+    (ya que no tienen PSxG asociado).
+
 DISEÑO:
   - Se llama DESDE main_analysis.py (no se ejecuta solo)
   - Reutiliza df_all y player_minutes_summary que ya existen en main_analysis
@@ -172,6 +178,15 @@ def _build_gk_shot_links(df, pid_col, psxg_col):
 
     # Preparar shots para merge (solo columnas necesarias)
     df_shots = df[df["type"] == "Shot"].copy()
+    if df_shots.empty:
+        return pd.DataFrame()
+    
+    # FILTRAR PENALTIES - no deben afectar goals_prevented
+    # Los penalties tienen PSxG ~0.76-0.80 y sesgan la métrica
+    total_shots = len(df_shots)
+    df_shots = df_shots[df_shots["shot_type"] != "Penalty"]
+    penalties_excluded = total_shots - len(df_shots)
+    
     if df_shots.empty:
         return pd.DataFrame()
 
@@ -439,6 +454,10 @@ def calculate_gk_metrics(df, player_minutes_summary):
         print("  ⚠️  No se generaron links GK→Shot (related_events vacíos o sin shots)")
     else:
         print(f"  Links GK→Shot generados: {len(linked):,}")
+        # Informar cuántos penalties fueron excluidos
+        penalties_in_data = ((df["type"] == "Shot") & (df["shot_type"] == "Penalty")).sum()
+        if penalties_in_data > 0:
+            print(f"  Penalties excluidos del cálculo: {penalties_in_data}")
 
     # --- STEP 2: Agregaciones por categoría ---
     shot_stopping = _agg_shot_stopping(linked, pid_col)
