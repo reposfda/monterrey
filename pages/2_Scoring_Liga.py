@@ -285,6 +285,7 @@ pos = filters["position"]
 min_minutes = int(filters["min_minutes"])
 selected_teams = filters.get("teams", [])
 min_matches = 3
+cat_w = filters.get("cat_weights", {})
 
 # =========================================
 # MAIN
@@ -353,9 +354,46 @@ cat_cols_pretty = list(cat_df.columns)
 base_cols = [c for c in ["Jugador", "Equipo", "Minutos", "PJ", "Score", "Perfil"] if c in scores_disp.columns]
 cols_show = base_cols + cat_cols_pretty
 
-# --- Top 10
+# =========================================
+# APPLY CAT WEIGHTS (what-if) -> Score_Ajustado
+# =========================================
+# cat_w viene de sidebar_filters: keys tipo "Score_Progresion" etc.
+# Nosotros tenemos en pantalla columnas "pretty" (ej: "Progresion", "Impacto Ofensivo"...)
+# Armamos un mapping para poder aplicar los pesos.
+def _to_pretty_key(score_key: str) -> str:
+    # "Score_AccionDefensiva" -> "Acciondefensiva" (luego title del pretty_map puede variar)
+    k = score_key.replace("Score_", "").replace("score_", "").replace("_", " ").strip().title()
+    return k
+
+# 1) construir pares (pretty_col, weight) que existan en scores_disp
+pairs = []
+for k, w in (cat_w or {}).items():
+    pretty_k = _to_pretty_key(k)
+    if pretty_k in scores_disp.columns:
+        pairs.append((pretty_k, float(w)))
+
+# 2) si tenemos 4 pesos válidos, calculamos Score_Ajustado (0-100)
+if len(pairs) >= 2:
+    # normalizar por si acaso
+    s = sum(w for _, w in pairs)
+    if s > 0:
+        pairs = [(c, w / s) for c, w in pairs]
+
+    # weighted sum
+    score_adj = 0
+    for c, w in pairs:
+        score_adj = score_adj + (pd.to_numeric(scores_disp[c], errors="coerce") * w)
+
+    scores_disp["Score_Ajustado"] = score_adj
+else:
+    scores_disp["Score_Ajustado"] = pd.to_numeric(scores_disp["Score"], errors="coerce")
+
+
+# agregar Score_Ajustado al display
+cols_show = base_cols + (["Score_Ajustado"] if "Score_Ajustado" in scores_disp.columns else []) + cat_cols_pretty
+
 top10 = (
-    scores_disp.sort_values("Score", ascending=False)[cols_show]
+    scores_disp.sort_values("Score_Ajustado", ascending=False)[cols_show]
     .head(10)
     .reset_index(drop=True)
 )
@@ -367,6 +405,9 @@ if "PJ" in top10.columns:
     top10["PJ"] = pd.to_numeric(top10["PJ"], errors="coerce").fillna(0).astype(int)
 if "Score" in top10.columns:
     top10["Score"] = pd.to_numeric(top10["Score"], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.2f}")
+if "Score_Ajustado" in top10.columns:
+    top10["Score_Ajustado"] = pd.to_numeric(top10["Score_Ajustado"], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.2f}")
+
 
 for c in cat_cols_pretty:
     top10[c] = pd.to_numeric(top10[c], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.2f}")

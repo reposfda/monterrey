@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import ast
+from typing import Dict, List
 
 # =========================
 # MACRO: categorías del rol (Score_*)
@@ -174,3 +175,90 @@ def get_detail_metric_list(position_key: str, detail_label: str, base_dir: Path)
 
     txt = script_path.read_text(encoding="utf-8", errors="ignore")
     return _extract_list_literal(txt, varname)
+
+# --------------------
+# Pesos de categorías (exactos)
+# --------------------
+CATEGORY_WEIGHTS_BY_POSITION: Dict[str, Dict[str, float]] = {
+    # Zaguero  -> position_scoring_defensor_central.py (CAT_W)
+    "Zaguero": {
+        "Score_AccionDefensiva": 0.25,
+        "Score_ControlDefensivo": 0.45,
+        "Score_Progresion": 0.20,
+        "Score_ImpactoOfensivo": 0.10,
+    },
+
+    # Lateral -> position_scoring_lateral.py (CAT_W)
+    "Lateral": {
+        "Score_Profundidad": 0.30,
+        "Score_Calidad": 0.30,
+        "Score_Presion": 0.20,
+        "Score_Defensivo": 0.20,
+    },
+
+    # Volante -> position_scoring_volante.py (CAT_W)
+    "Volante": {
+        "Score_Posesion": 0.25,
+        "Score_Progresion": 0.30,
+        "Score_Territoriales": 0.25,
+        "Score_Contencion": 0.20,
+    },
+
+    # Interior/Mediapunta -> position_scoring_interior.py (CAT_W)
+    "Interior/Mediapunta": {
+        "Score_BoxToBox": 0.25,
+        "Score_Desequilibrio": 0.30,
+        "Score_Organizacion": 0.25,
+        "Score_ContencionPresion": 0.20,
+    },
+
+    # Extremo -> position_scoring_extremos.py (CAT_W)
+    "Extremo": {
+        "Score_CompromisoDef": 0.20,
+        "Score_Desequilibrio": 0.35,
+        "Score_Finalizacion": 0.30,
+        "Score_ZonaInfluencia": 0.15,
+    },
+
+    # Delantero -> position_scoring_delantero.py (CAT_W)
+    "Delantero": {
+        "Score_Finalizacion": 0.40,
+        "Score_Presionante": 0.10,
+        "Score_Conector": 0.25,
+        "Score_Disruptivo": 0.25,
+    },
+}
+
+
+# --------------------
+# Splits internos (solo si aplica)
+# --------------------
+# Lateral: Defensivo = combinación interna Exec + OBV
+LATERAL_DEF_SPLIT: Dict[str, float] = {
+    "DEF_EXEC": 0.60,  # def_exec_w
+    "DEF_OBV": 0.40,   # def_obv_w
+}
+
+
+# --------------------
+# Helpers
+# --------------------
+def get_category_weights(position: str) -> Dict[str, float]:
+    """Devuelve dict de pesos por categoría (Score_*) para la posición."""
+    return CATEGORY_WEIGHTS_BY_POSITION.get(position, {}).copy()
+
+
+def get_categories(position: str) -> List[str]:
+    """Devuelve lista ordenada de categorías (Score_*) para la posición."""
+    return list(get_category_weights(position).keys())
+
+
+def get_lateral_def_split() -> Dict[str, float]:
+    """Devuelve split interno para laterales (Exec/OBV)."""
+    return LATERAL_DEF_SPLIT.copy()
+
+
+def strip_score_prefix(cat: str) -> str:
+    """Convierte 'Score_Progresion' -> 'Progresion'."""
+    return cat.replace("Score_", "", 1)
+
