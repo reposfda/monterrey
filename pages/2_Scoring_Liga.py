@@ -382,198 +382,156 @@ with st.expander("Ver ranking completo"):
     st.dataframe(scores_disp.sort_values("Score", ascending=False), use_container_width=True)
 
 # =========================================
-# VIZ: Mapa de Perfiles por Cuadrantes (2+2)
+# VIZ: Boxplot por categoría + highlight jugador
 # =========================================
 st.markdown("---")
-st.subheader("🧭 Perfiles – Mapa por cuadrantes (2+2)")
+st.subheader("Distribución por categoría")
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-# --- Fallback paleta (por si no están definidos arriba)
+# --- Fallback paleta
 PRIMARY_BG = globals().get("PRIMARY_BG", "#0B1F38")
 ACCENT     = globals().get("ACCENT", "#6CA0DC")
 GOLD       = globals().get("GOLD", "#807C42")
 TEXT       = globals().get("TEXT", "#E8EEF6")
 
-# --- Helper robusto para matching de nombres
-def _norm_player(x: str) -> str:
-    if x is None:
-        return ""
-    return (
-        str(x)
-        .strip()
-        .replace("\u00A0", " ")
-        .replace("  ", " ")
-        .lower()
-    )
+# --- Base DF (dedupe columnas + índice seguro)
+plot_df = scores_disp.copy()
+plot_df = plot_df.reset_index(drop=True)
+plot_df.index = pd.RangeIndex(len(plot_df))
 
-# --- 1) Elegir 4 categorías (defensivas y ofensivas)
-available_cats = [c for c in cat_cols_pretty if c in scores_disp.columns]
-if len(available_cats) < 4:
-    st.warning(f"Necesito 4 categorías para este mapa, pero encontré {len(available_cats)}: {available_cats}.")
+# Normalizar nombres columnas (por si hay NBSP)
+plot_df.columns = (
+    pd.Index(plot_df.columns)
+      .astype(str)
+      .str.replace("\u00A0", " ", regex=False)
+      .str.strip()
+)
+
+# --- Categorías a graficar: usa tu config por posición si existe; si no, intenta tomar 4 Score_*
+# 1) si ya tenés cat_cols_pretty (4 categorías por posición), usalo:
+cats = [c for c in cat_cols_pretty if c in plot_df.columns]
+
+# Si tenés más de 4 (ej. por bug de scoring), preferí las que usa el role_config actual:
+# si en tu página ya estás armando `cat_cols_pretty` para esa posición, normalmente ya viene bien.
+# En caso de exceso, recortamos a 4 por lo que esté primero.
+if len(cats) > 4:
+    cats = cats[:4]
+
+if len(cats) < 2:
+    st.warning("No encontré categorías válidas para graficar en este DF.")
 else:
-    # defaults: intenta mapear por nombre si existen
-    def _pick_default(name_contains: str, fallback_idx: int) -> str:
-        for c in available_cats:
-            if name_contains.lower() in str(c).lower():
-                return c
-        return available_cats[fallback_idx]
+    # --- Convertir a numérico
+    for c in cats:
+        plot_df[c] = pd.to_numeric(plot_df[c], errors="coerce")
 
-    default_def1 = _pick_default("accion", 0)
-    default_def2 = _pick_default("control", 1)
-    default_off1 = _pick_default("progre", 2)
-    default_off2 = _pick_default("impacto", 3)
-
-    with st.expander("Configurar ejes (2+2)", expanded=True):
-        c1, c2 = st.columns(2)
-        with c1:
-            def1 = st.selectbox("Eje Y – Categoría 1 (Defensivo):", options=available_cats, index=available_cats.index(default_def1))
-            def2 = st.selectbox("Eje Y – Categoría 2 (Defensivo):", options=available_cats, index=available_cats.index(default_def2))
-            w_def1 = st.slider("Peso Defensivo 1", 0.0, 1.0, 0.50, 0.05)
-            w_def2 = 1.0 - w_def1
-            st.caption(f"Peso Def2 = {w_def2:.2f}")
-        with c2:
-            off1 = st.selectbox("Eje X – Categoría 1 (Ofensivo):", options=available_cats, index=available_cats.index(default_off1))
-            off2 = st.selectbox("Eje X – Categoría 2 (Ofensivo):", options=available_cats, index=available_cats.index(default_off2))
-            w_off1 = st.slider("Peso Ofensivo 1", 0.0, 1.0, 0.50, 0.05)
-            w_off2 = 1.0 - w_off1
-            st.caption(f"Peso Off2 = {w_off2:.2f}")
-
-    # --- 2) Preparar DF
-    plot_df = scores_disp.copy()
-    base_need = ["Jugador", "Equipo", "Perfil", "Score", def1, def2, off1, off2]
-    for col in base_need:
-        if col not in plot_df.columns:
-            st.error(f"Falta la columna '{col}' en scores_disp.")
-            st.stop()
-
-    for col in ["Score", def1, def2, off1, off2]:
-        plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
-
-    plot_df = plot_df[base_need].dropna(subset=[def1, def2, off1, off2]).copy()
+    # Tirar NaNs en todas las cats
+    plot_df = plot_df.dropna(subset=cats).copy()
     if plot_df.empty:
-        st.warning("No hay jugadores con valores válidos para esas 4 categorías.")
-        st.stop()
+        st.warning("No hay filas con valores válidos en las categorías seleccionadas.")
+    else:
+        # --- Selector highlight robusto
+        if "player_id" in plot_df.columns:
+            plot_df["hl_id"] = plot_df["player_id"].astype(str)
+        else:
+            plot_df["hl_id"] = (plot_df["Jugador"].astype(str) + "||" + plot_df["Equipo"].astype(str))
 
-    # --- 3) Construir ejes compuestos (escala original)
-    plot_df["X_off"] = w_off1 * plot_df[off1] + w_off2 * plot_df[off2]
-    plot_df["Y_def"] = w_def1 * plot_df[def1] + w_def2 * plot_df[def2]
+        plot_df["hl_label"] = plot_df["Jugador"].astype(str) + " — " + plot_df["Equipo"].astype(str)
 
-    # --- 4) Líneas promedio para cuadrantes
-    x_mean = float(plot_df["X_off"].mean())
-    y_mean = float(plot_df["Y_def"].mean())
+        uniq = plot_df.drop_duplicates(subset=["hl_id"], keep="first")[["hl_id", "hl_label"]].copy()
+        label_map = dict(zip(uniq["hl_id"], uniq["hl_label"]))
 
-    # --- 5) Selector highlight
-    plot_df["player_key"] = plot_df["Jugador"].astype(str).map(_norm_player)
+        selected_id = st.selectbox(
+            "Highlight jugador:",
+            options=["(ninguno)"] + uniq["hl_id"].tolist(),
+            format_func=lambda x: x if x == "(ninguno)" else label_map.get(x, x),
+            index=0,
+            key=f"box_hl_{pos}",
+        )
 
-    players_display = plot_df["Jugador"].astype(str).tolist()
-    key_by_display = dict(zip(players_display, plot_df["player_key"].tolist()))
+        # --- Reestructurar a formato long
+        long = plot_df.melt(
+            id_vars=["Jugador", "Equipo", "hl_id"],
+            value_vars=cats,
+            var_name="Categoria",
+            value_name="Valor"
+        )
 
-    selected_display = st.selectbox("Highlight jugador:", options=["(ninguno)"] + players_display, index=0)
-    selected_key = "" if selected_display == "(ninguno)" else key_by_display.get(selected_display, _norm_player(selected_display))
-    plot_df["highlight"] = (plot_df["player_key"] == selected_key)
+        # --- Figura
+        fig = go.Figure()
 
-    # --- 6) Rango de ejes (si tus scores son 0-100, queda perfecto)
-    # Si no, auto-range con padding
-    def _axis_range(s: pd.Series):
-        lo = float(np.nanpercentile(s, 2))
-        hi = float(np.nanpercentile(s, 98))
-        pad = (hi - lo) * 0.08 if hi > lo else 1.0
-        return [lo - pad, hi + pad]
+        # Boxplot por categoría (whiskers = IQR por defecto)
+        # points='all' muestra puntos, jitter para ver densidad
+        for cat in cats:
+            d = long.loc[long["Categoria"] == cat, "Valor"].astype(float).to_numpy()
 
-    xr = _axis_range(plot_df["X_off"])
-    yr = _axis_range(plot_df["Y_def"])
+            fig.add_trace(go.Box(
+                y=d,
+                name=cat,
+                boxpoints="all",
+                jitter=0.35,
+                pointpos=0,
+                marker=dict(size=5, opacity=0.22, color="rgba(232,238,246,0.55)"),
+                line=dict(color="rgba(108,160,220,0.55)", width=1),   # líneas finas
+                fillcolor="rgba(108,160,220,0.08)",                   # caja más liviana
+                whiskerwidth=0.35,
+                width=0.30,                                           # caja más angosta
+                showlegend=False,
+                # median line visible por defecto (no hace falta leyenda)
+            ))
 
-    # --- 7) Figura
-    fig = go.Figure()
+        # Highlight overlay (un punto por categoría + línea horizontal)
+        if selected_id != "(ninguno)":
+            hlong = long[long["hl_id"].astype(str) == str(selected_id)].copy()
 
-    # puntos por Perfil (si hay demasiados perfiles, podemos pasar a Dominante)
-    # acá mantenemos Perfil porque en cuadrantes suele funcionar
-    for prof, ddf in plot_df.groupby("Perfil", dropna=False):
-        fig.add_trace(go.Scattergl(
-            x=ddf["X_off"],
-            y=ddf["Y_def"],
-            mode="markers",
-            name=str(prof),
-            marker=dict(size=9, opacity=0.78, line=dict(width=0)),
-            customdata=np.stack([
-                ddf["Jugador"].astype(str),
-                ddf["Equipo"].astype(str),
-                ddf["Score"].astype(float),
-                ddf[off1].astype(float),
-                ddf[off2].astype(float),
-                ddf[def1].astype(float),
-                ddf[def2].astype(float),
-            ], axis=1),
-            hovertemplate=(
-                "<b>%{customdata[0]}</b><br>"
-                "%{customdata[1]}<br>"
-                "Score: %{customdata[2]:.2f}<br>"
-                f"{off1}: "+"%{customdata[3]:.2f}<br>"
-                f"{off2}: "+"%{customdata[4]:.2f}<br>"
-                f"{def1}: "+"%{customdata[5]:.2f}<br>"
-                f"{def2}: "+"%{customdata[6]:.2f}<extra></extra>"
+        # Highlight overlay (solo scores, sin nombre)
+        if selected_id != "(ninguno)":
+            hlong = long[long["hl_id"].astype(str) == str(selected_id)].copy()
+
+            if not hlong.empty:
+                fig.add_trace(go.Scatter(
+                    x=hlong["Categoria"],
+                    y=hlong["Valor"],
+                    mode="markers+text",
+                    text=[f"{v:.1f}" if pd.notna(v) else "" for v in hlong["Valor"]],
+                    textposition="top center",
+                    textfont=dict(color=TEXT, size=12),
+                    marker=dict(
+                        size=10,
+                        color=GOLD,
+                        opacity=0.95,
+                        line=dict(width=0),
+                        symbol="circle"
+                    ),
+                    hovertemplate="<b>%{x}</b><br>Valor: %{y:.1f}<extra></extra>",
+                    showlegend=False
+                ))
+
+        # Layout
+        fig.update_layout(
+            height=560,
+            paper_bgcolor=PRIMARY_BG,
+            plot_bgcolor=PRIMARY_BG,
+            margin=dict(l=18, r=18, t=10, b=10),
+            font=dict(color=TEXT, family="Inter, Segoe UI, Arial"),
+            xaxis=dict(
+                title="",
+                tickfont=dict(color="rgba(232,238,246,0.75)"),
+                showgrid=False,
+                zeroline=False
             ),
-        ))
+            yaxis=dict(
+                title="",
+                tickfont=dict(color="rgba(232,238,246,0.75)"),
+                gridcolor="rgba(232,238,246,0.10)",
+                zeroline=False
+            ),
+        )
 
-    # líneas punteadas en promedios
-    fig.add_shape(type="line", x0=x_mean, y0=yr[0], x1=x_mean, y1=yr[1],
-                  line=dict(color="rgba(232,238,246,0.35)", width=2, dash="dot"))
-    fig.add_shape(type="line", x0=xr[0], y0=y_mean, x1=xr[1], y1=y_mean,
-                  line=dict(color="rgba(232,238,246,0.35)", width=2, dash="dot"))
+        fig.update_yaxes(range=[0, 100])
 
-    # labels de cuadrantes
-    fig.add_annotation(x=xr[0], y=yr[1], xanchor="left", yanchor="top",
-                       text="<b>Defensivo + Bajo Ofensivo</b>",
-                       showarrow=False, font=dict(color=TEXT, size=12),
-                       bgcolor="rgba(11,31,56,0.55)", borderpad=6)
-    fig.add_annotation(x=xr[1], y=yr[1], xanchor="right", yanchor="top",
-                       text="<b>Defensivo + Alto Ofensivo</b>",
-                       showarrow=False, font=dict(color=TEXT, size=12),
-                       bgcolor="rgba(11,31,56,0.55)", borderpad=6)
-    fig.add_annotation(x=xr[0], y=yr[0], xanchor="left", yanchor="bottom",
-                       text="<b>Bajo Defensivo + Bajo Ofensivo</b>",
-                       showarrow=False, font=dict(color=TEXT, size=12),
-                       bgcolor="rgba(11,31,56,0.55)", borderpad=6)
-    fig.add_annotation(x=xr[1], y=yr[0], xanchor="right", yanchor="bottom",
-                       text="<b>Bajo Defensivo + Alto Ofensivo</b>",
-                       showarrow=False, font=dict(color=TEXT, size=12),
-                       bgcolor="rgba(11,31,56,0.55)", borderpad=6)
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption("Boxplot: línea = mediana · caja = IQR (P25–P75) · whiskers = 1.5×IQR · puntos = jugadores")
 
-    # highlight
-    h = plot_df[plot_df["highlight"]]
-    if not h.empty:
-        fig.add_trace(go.Scattergl(
-            x=h["X_off"], y=h["Y_def"],
-            mode="markers+text",
-            text=h["Jugador"],
-            textposition="top center",
-            textfont=dict(color=TEXT, size=12),
-            marker=dict(size=18, color="rgba(0,0,0,0)", line=dict(width=4, color=GOLD)),
-            hoverinfo="skip",
-            showlegend=False
-        ))
-
-    fig.update_layout(
-        height=650,
-        paper_bgcolor=PRIMARY_BG,
-        plot_bgcolor=PRIMARY_BG,
-        margin=dict(l=18, r=18, t=10, b=10),
-        font=dict(color=TEXT, family="Inter, Segoe UI, Arial"),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom", y=1.02,
-            xanchor="left", x=0.0,
-            bgcolor="rgba(0,0,0,0)",
-            title_text=""
-        ),
-        xaxis_title=f"{off1} / {off2}  (Eje ofensivo)",
-        yaxis_title=f"{def1} / {def2}  (Eje defensivo)",
-    )
-
-    fig.update_xaxes(range=xr, showgrid=False, zeroline=False, ticks="outside", tickfont=dict(color="rgba(232,238,246,0.65)"))
-    fig.update_yaxes(range=yr, showgrid=False, zeroline=False, ticks="outside", tickfont=dict(color="rgba(232,238,246,0.65)"))
-
-    st.plotly_chart(fig, use_container_width=True)
