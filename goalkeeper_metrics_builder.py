@@ -5,19 +5,38 @@ Calcula métricas avanzadas de arqueros desde eventos de StatsBomb.
 
 Métricas calculadas (todas prefijadas con 'gk_'):
 
-  Shot Stopping:
+  Shot Stopping (SIN penalties):
     gk_save_pct                                     % de tiros a puerta detenidos
-    gk_psxg_faced_per90                             Post-Shot xG enfrentado por 90min
-    gk_goals_prevented                              Goles prevenidos absolutos (PSxG − concedidos)
-    gk_goals_prevented_per90                        Goles prevenidos por 90
+    gk_psxg_faced_per90                             PSxG/Goals Prevented por 90min*
+    gk_goals_prevented                              Goles prevenidos*
+    gk_goals_prevented_per90                        Goles prevenidos por 90*
     gk_shots_on_target_against_per90                Tiros a puerta enfrentados por 90
     gk_saves_per90                                  Paradas por 90
+    
+    *NOTA IMPORTANTE sobre goals_prevented:
+      - Si se usa shot_gk_shot_stopping_xg_suppression (columna de StatsBomb):
+          → El valor YA ES goals prevented directamente (no se resta nada)
+          → gk_psxg_faced = goals_prevented (misma métrica)
+      - Si se usan fallbacks (shot_shot_execution_xg o shot_statsbomb_xg):
+          → goals_prevented = PSxG - goals_conceded (cálculo tradicional)
+          → gk_psxg_faced ≠ goals_prevented
 
-  Goals Conceded:
-    gk_goals_conceded_total                         Goles concedidos (shots + OG)
+  Goals Conceded (SIN penalties, SIN own goals):
+    gk_goals_conceded_total                         Goles concedidos
     gk_goals_conceded_per90                         Goles concedidos por 90
-    gk_own_goals_against                            Autogoles concedidos
+    gk_own_goals_against                            Autogoles (métrica separada)
+    gk_own_goals_against_per90                      Autogoles por 90
     gk_errors_leading_to_goal                       Errores del arquero que llevaron a gol
+
+  Penalties (métricas separadas):
+    gk_penalty_save_pct                             % de penalties atajados
+    gk_penalties_faced                              Penalties enfrentados (total)
+    gk_penalties_saved                              Penalties atajados (total)
+    gk_penalties_conceded                           Goles de penalty concedidos (total)
+    gk_penalties_psxg                               PSxG total de penalties (informativo)
+    gk_penalties_faced_per90                        Penalties enfrentados por 90
+    gk_penalties_saved_per90                        Penalties atajados por 90
+    gk_penalties_conceded_per90                     Goles de penalty concedidos por 90
 
   Foot Play:
     gk_pass_completion_pct                          % de pases completados
@@ -29,11 +48,26 @@ Métricas calculadas (todas prefijadas con 'gk_'):
     gk_actions_outside_box_per90                    Acciones fuera del área por 90
     gk_aggressive_distance_avg                      Distancia promedio de juego (x)
 
-IMPORTANTE:
-  - PENALTIES EXCLUIDOS: Los tiros penales NO se incluyen en goals_prevented.
-    Razón: PSxG de penalties (~0.76-0.80) sesga la métrica artificialmente.
-  - Own goals SÍ se incluyen en goals_conceded_total pero NO afectan goals_prevented
-    (ya que no tienen PSxG asociado).
+IMPORTANTE - EXCLUSIONES Y SEPARACIÓN:
+  ❌ PENALTIES: Excluidos de las métricas de shot stopping principales
+     - NO afectan: gk_save_pct, gk_goals_prevented, gk_psxg_faced (principales)
+     - SÍ tienen métricas propias: gk_penalties_*, gk_penalty_save_pct
+     - Razón: Permite comparar shot stopping en juego abierto vs situaciones de penalty
+  
+  ❌ OWN GOALS: NO incluidos en goals_conceded_total
+     - Tienen métricas propias: gk_own_goals_against, gk_own_goals_against_per90
+     - Razón: No son "culpa" del arquero para métricas de rendimiento
+
+  ✅ MÉTRICAS PRINCIPALES INCLUYEN: Open Play, Free Kicks, Corners
+
+COLUMNA PSxG UTILIZADA Y CÁLCULO DE GOALS PREVENTED:
+  Prioridad de columnas:
+    1. shot_gk_shot_stopping_xg_suppression - Métrica de StatsBomb
+       → YA ES goals prevented (suma directa, no restar goals)
+    2. shot_shot_execution_xg - Post-shot xG general (fallback)
+       → Requiere cálculo: goals_prevented = PSxG - goals_conceded
+    3. shot_statsbomb_xg - Pre-shot xG (fallback)
+       → Requiere cálculo: goals_prevented = PSxG - goals_conceded
 
 DISEÑO:
   - Se llama DESDE main_analysis.py (no se ejecuta solo)
@@ -99,8 +133,14 @@ def _get_pid_col(df):
 def _get_psxg_col(df):
     """
     Retorna nombre de columna PSxG.
-    Preferencia: shot_shot_execution_xg (post-shot) > shot_statsbomb_xg (pre-shot).
+    
+    Prioridad:
+      1. shot_gk_shot_stopping_xg_suppression - Métrica específica de StatsBomb para shot stopping
+      2. shot_shot_execution_xg - Post-shot xG general
+      3. shot_statsbomb_xg - Pre-shot xG (fallback)
     """
+    if "shot_gk_shot_stopping_xg_suppression" in df.columns:
+        return "shot_gk_shot_stopping_xg_suppression"
     if "shot_shot_execution_xg" in df.columns:
         return "shot_shot_execution_xg"
     if "shot_statsbomb_xg" in df.columns:
@@ -181,11 +221,8 @@ def _build_gk_shot_links(df, pid_col, psxg_col):
     if df_shots.empty:
         return pd.DataFrame()
     
-    # FILTRAR PENALTIES - no deben afectar goals_prevented
-    # Los penalties tienen PSxG ~0.76-0.80 y sesgan la métrica
-    total_shots = len(df_shots)
+    # FILTRAR PENALTIES - excluir completamente de todas las métricas
     df_shots = df_shots[df_shots["shot_type"] != "Penalty"]
-    penalties_excluded = total_shots - len(df_shots)
     
     if df_shots.empty:
         return pd.DataFrame()
@@ -212,11 +249,17 @@ def _build_gk_shot_links(df, pid_col, psxg_col):
 
 # ============= AGREGACIONES POR CATEGORÍA =============
 
-def _agg_shot_stopping(linked, pid_col):
+def _agg_shot_stopping(linked, pid_col, psxg_col):
     """
     Agrega métricas de shot stopping por arquero.
     
     Input: DataFrame de links GK→Shot (output de _build_gk_shot_links).
+    
+    IMPORTANTE - Cálculo de goals_prevented:
+      - Si psxg_col == 'shot_gk_shot_stopping_xg_suppression':
+          goals_prevented = suma de PSxG (ya es goals prevented directamente)
+      - Si psxg_col es otro (shot_shot_execution_xg o shot_statsbomb_xg):
+          goals_prevented = suma de PSxG - goals concedidos
     
     Métricas:
       - shots_on_target: Saved + Goal (los únicos que llegaron al arquero)
@@ -224,7 +267,7 @@ def _agg_shot_stopping(linked, pid_col):
       - save_pct: saves / shots_on_target
       - goals_conceded_shots: outcome == 'Goal'
       - psxg_faced: suma de PSxG de los shots linked
-      - goals_prevented: psxg_faced − goals_conceded_shots
+      - goals_prevented: depende de la columna PSxG usada (ver arriba)
       - errors_leading_to_shot: GK events con outcome de error
       - errors_leading_to_goal: errores donde el shot fue Goal
     """
@@ -242,13 +285,21 @@ def _agg_shot_stopping(linked, pid_col):
         err_to_shot = int(err_mask.sum())
         err_to_goal = int((err_mask & (grp["_shot_outcome"] == "Goal")).sum())
 
+        # CÁLCULO DE GOALS PREVENTED según columna PSxG
+        # shot_gk_shot_stopping_xg_suppression YA es goals prevented
+        # Las otras columnas requieren restar goals
+        if psxg_col == "shot_gk_shot_stopping_xg_suppression":
+            goals_prevented = float(psxg)  # Ya es goals prevented
+        else:
+            goals_prevented = float(psxg) - int(goals)  # Calcularlo
+
         return pd.Series({
             "gk_shots_on_target_against": int(on_target),
             "gk_saves": int(saves),
             "gk_save_pct": saves / on_target if on_target > 0 else np.nan,
             "gk_goals_conceded_shots": int(goals),
             "gk_psxg_faced": float(psxg),
-            "gk_goals_prevented": float(psxg) - int(goals),
+            "gk_goals_prevented": goals_prevented,
             "gk_errors_leading_to_shot": err_to_shot,
             "gk_errors_leading_to_goal": err_to_goal,
         })
@@ -397,6 +448,79 @@ def _agg_own_goals(df, gk_ids, pid_col):
     return result
 
 
+def _agg_penalties(df, pid_col, psxg_col):
+    """
+    Calcula métricas específicas de penalties.
+    
+    Similar a _build_gk_shot_links pero SOLO para penalties.
+    Permite analizar el rendimiento del arquero en penalties por separado.
+    
+    Retorna DataFrame con:
+      - gk_penalties_faced: Total de penalties enfrentados
+      - gk_penalties_saved: Penalties atajados
+      - gk_penalties_conceded: Goles de penalty concedidos
+      - gk_penalty_save_pct: % de penalties atajados
+      - gk_penalties_psxg: PSxG total de penalties (informativo)
+    """
+    # Filtrar GK events
+    df_gk = df[df["type"] == "Goal Keeper"].copy()
+    if df_gk.empty:
+        return pd.DataFrame()
+
+    # Parse y explotar related_events
+    df_gk["_related"] = df_gk["related_events"].apply(_parse_related)
+    df_gk_exp = df_gk.explode("_related").rename(columns={"_related": "_rel_id"})
+    df_gk_exp = df_gk_exp[
+        df_gk_exp["_rel_id"].notna() & (df_gk_exp["_rel_id"].astype(str).str.len() > 0)
+    ]
+
+    if df_gk_exp.empty:
+        return pd.DataFrame()
+
+    # Preparar SOLO penalties
+    df_penalties = df[(df["type"] == "Shot") & (df["shot_type"] == "Penalty")].copy()
+    if df_penalties.empty:
+        return pd.DataFrame()
+
+    pen_cols = ["id", "shot_outcome"]
+    if psxg_col and psxg_col in df_penalties.columns:
+        df_penalties[psxg_col] = pd.to_numeric(df_penalties[psxg_col], errors="coerce").fillna(0)
+        pen_cols.append(psxg_col)
+
+    penalties_lk = df_penalties[pen_cols].copy()
+    penalties_lk["id"] = penalties_lk["id"].astype(str)
+
+    # Rename para merge
+    rename_map = {"id": "_rel_id", "shot_outcome": "_pen_outcome"}
+    if psxg_col and psxg_col in penalties_lk.columns:
+        rename_map[psxg_col] = "_pen_psxg"
+    penalties_lk = penalties_lk.rename(columns=rename_map)
+
+    # Merge: solo penalties vinculados a GK events
+    linked = df_gk_exp.merge(penalties_lk, on="_rel_id", how="inner")
+
+    if linked.empty:
+        return pd.DataFrame()
+
+    # Agregar por arquero
+    def _agg(grp):
+        faced = len(grp)
+        saved = (grp["_pen_outcome"] == "Saved").sum()
+        conceded = (grp["_pen_outcome"] == "Goal").sum()
+        psxg = grp["_pen_psxg"].sum() if "_pen_psxg" in grp.columns else 0.0
+
+        return pd.Series({
+            "gk_penalties_faced": int(faced),
+            "gk_penalties_saved": int(saved),
+            "gk_penalties_conceded": int(conceded),
+            "gk_penalty_save_pct": saved / faced if faced > 0 else np.nan,
+            "gk_penalties_psxg": float(psxg),
+        })
+
+    result = linked.groupby(pid_col).apply(_agg, include_groups=False).reset_index()
+    return result
+
+
 # ============= FUNCIÓN PRINCIPAL =============
 
 def calculate_gk_metrics(df, player_minutes_summary):
@@ -444,6 +568,12 @@ def calculate_gk_metrics(df, player_minutes_summary):
     psxg_col = _get_psxg_col(df[df["type"] == "Shot"])
     if psxg_col:
         print(f"  Columna PSxG: {psxg_col}")
+        if psxg_col == "shot_gk_shot_stopping_xg_suppression":
+            print(f"    ✓ Usando métrica específica de StatsBomb para shot stopping")
+        elif psxg_col == "shot_shot_execution_xg":
+            print(f"    ⚠️  Fallback: post-shot xG general")
+        elif psxg_col == "shot_statsbomb_xg":
+            print(f"    ⚠️  Fallback: pre-shot xG (menos preciso)")
     else:
         print("  ⚠️  No se encontró columna de PSxG. "
               "goals_prevented será = −goals_conceded")
@@ -454,16 +584,17 @@ def calculate_gk_metrics(df, player_minutes_summary):
         print("  ⚠️  No se generaron links GK→Shot (related_events vacíos o sin shots)")
     else:
         print(f"  Links GK→Shot generados: {len(linked):,}")
-        # Informar cuántos penalties fueron excluidos
-        penalties_in_data = ((df["type"] == "Shot") & (df["shot_type"] == "Penalty")).sum()
-        if penalties_in_data > 0:
-            print(f"  Penalties excluidos del cálculo: {penalties_in_data}")
+        # Informar sobre penalties excluidos
+        penalties_total = ((df["type"] == "Shot") & (df["shot_type"] == "Penalty")).sum()
+        if penalties_total > 0:
+            print(f"  Penalties excluidos completamente: {penalties_total}")
 
     # --- STEP 2: Agregaciones por categoría ---
-    shot_stopping = _agg_shot_stopping(linked, pid_col)
+    shot_stopping = _agg_shot_stopping(linked, pid_col, psxg_col)
     foot_play    = _agg_foot_play(df, gk_ids, pid_col)
     outside_box  = _agg_outside_box(df, gk_ids, pid_col)
     own_goals    = _agg_own_goals(df, gk_ids, pid_col)
+    penalties    = _agg_penalties(df, pid_col, psxg_col)
 
     # --- STEP 3: Combinar en un solo DataFrame ---
     # Base: todos los GKs que tienen minutos en player_minutes_summary
@@ -484,6 +615,7 @@ def calculate_gk_metrics(df, player_minutes_summary):
         (foot_play,     "foot_play"),
         (outside_box,   "outside_box"),
         (own_goals,     "own_goals"),
+        (penalties,     "penalties"),
     ]
 
     for agg_df, label in agg_groups:
@@ -502,9 +634,10 @@ def calculate_gk_metrics(df, player_minutes_summary):
 
     result["gk_goals_conceded_shots"] = result["gk_goals_conceded_shots"].fillna(0)
     result["gk_own_goals_against"]    = result["gk_own_goals_against"].fillna(0)
-    result["gk_goals_conceded_total"] = (
-        result["gk_goals_conceded_shots"] + result["gk_own_goals_against"]
-    )
+    
+    # Goals concedidos total: SOLO goals de shots (ya excluye penalties)
+    # NO incluir own goals (no son "culpa" del arquero para métricas de shot stopping)
+    result["gk_goals_conceded_total"] = result["gk_goals_conceded_shots"]
 
     # --- STEP 5: Normalizar per90 ---
     per90_map = {
@@ -515,6 +648,12 @@ def calculate_gk_metrics(df, player_minutes_summary):
         "gk_goals_conceded_per90":          "gk_goals_conceded_total",
         "gk_pressured_passes_def_third_per90": "gk_pressured_passes_def_third",
         "gk_actions_outside_box_per90":     "gk_actions_outside_box",
+        # Penalties
+        "gk_penalties_faced_per90":         "gk_penalties_faced",
+        "gk_penalties_saved_per90":         "gk_penalties_saved",
+        "gk_penalties_conceded_per90":      "gk_penalties_conceded",
+        # Own Goals
+        "gk_own_goals_against_per90":       "gk_own_goals_against",
     }
 
     for per90_col, source_col in per90_map.items():
@@ -534,22 +673,48 @@ def calculate_gk_metrics(df, player_minutes_summary):
     # Seleccionar columnas finales: player_id + métricas de salida
     # (descartar columnas internas: _total_minutes, _per90, y absolutos intermedios)
     output_metrics = [
-        # Shot Stopping
+        # Shot Stopping - Ratios
         "gk_save_pct",
-        "gk_saves_per90",
-        "gk_shots_on_target_against_per90",
-        "gk_psxg_faced_per90",
+        # Shot Stopping - Totales
+        "gk_shots_on_target_against",
+        "gk_saves",
+        "gk_psxg_faced",
         "gk_goals_prevented",
-        "gk_goals_prevented_per90",
-        # Goals Conceded
-        "gk_goals_conceded_total",
-        "gk_goals_conceded_per90",
-        "gk_own_goals_against",
+        "gk_errors_leading_to_shot",
         "gk_errors_leading_to_goal",
-        # Foot Play
+        # Shot Stopping - Per90
+        "gk_shots_on_target_against_per90",
+        "gk_saves_per90",
+        "gk_psxg_faced_per90",
+        "gk_goals_prevented_per90",
+        # Goals Conceded - Totales
+        "gk_goals_conceded_shots",
+        "gk_goals_conceded_total",
+        "gk_own_goals_against",
+        # Goals Conceded - Per90
+        "gk_goals_conceded_per90",
+        "gk_own_goals_against_per90",
+        # Penalties - Ratios
+        "gk_penalty_save_pct",
+        # Penalties - Totales
+        "gk_penalties_faced",
+        "gk_penalties_saved",
+        "gk_penalties_conceded",
+        "gk_penalties_psxg",
+        # Penalties - Per90
+        "gk_penalties_faced_per90",
+        "gk_penalties_saved_per90",
+        "gk_penalties_conceded_per90",
+        # Foot Play - Ratios
         "gk_long_ball_pct",
         "gk_pressured_passes_def_third_completion_pct",
-        # Outside Box
+        # Foot Play - Totales
+        "gk_pressured_passes_def_third",
+        "gk_pass_obv_per90",
+        "gk_pressured_passes_def_third_per90",
+        # Outside Box - Totales
+        "gk_actions_outside_box",
+        # Outside Box - Per90 y promedios
         "gk_actions_outside_box_per90",
         "gk_aggressive_distance_avg",
     ]
