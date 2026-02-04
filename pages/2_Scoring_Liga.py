@@ -291,17 +291,18 @@ cat_w = filters.get("cat_weights", {})
 # MAIN
 # =========================================
 with st.spinner("Calculando scoring..."):
-    scores = compute_scoring(
-        per90_path=str(PER90_PATH),
-        position_key=pos,
-        min_minutes=min_minutes,
-        min_matches=min_matches,
-        selected_teams=selected_teams,
-    )
-
-if scores is None or scores.empty:
-    st.warning("No hay jugadores que cumplan los filtros.")
-    st.stop()
+    try:
+        scores = compute_scoring(
+            per90_path=str(PER90_PATH),
+            position_key=pos,
+            min_minutes=min_minutes,
+            min_matches=min_matches,
+            selected_teams=selected_teams,
+        )
+    except ValueError:
+        st.warning(f"No hay jugadores de {pos} que cumplan los filtros actuales.")
+        st.info("Probá bajar Minutos mínimos, cambiar Equipo o elegir otra Posición.")
+        st.stop()
 
 # --- renombres base (sin crear duplicados)
 rename_map = {
