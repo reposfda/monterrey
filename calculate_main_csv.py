@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 
 # Importar funciones de turnover
-from turnover_scoring import compute_player_turnovers, classify_turnover
+from calculate_turnover import compute_player_turnovers, classify_turnover
 
 # Importar módulo de análisis de carriles OBV
 try:
@@ -33,8 +33,21 @@ except Exception as e:
     print(f"❌ Error importando cb_zone_builder: {e}")
     CB_ZONE_AVAILABLE = False
 
+# Importar módulo de métricas de arqueros
+try:
+    from goalkeeper_metrics_builder import calculate_gk_metrics
+    GK_METRICS_AVAILABLE = True
+    print("✓ Módulo goalkeeper_metrics_builder importado correctamente")
+except ImportError as e:
+    print(f"⚠️  Módulo goalkeeper_metrics_builder no disponible: {e}")
+    print("   Asegúrate de que goalkeeper_metrics_builder.py está en el mismo directorio")
+    GK_METRICS_AVAILABLE = False
+except Exception as e:
+    print(f"❌ Error importando goalkeeper_metrics_builder: {e}")
+    GK_METRICS_AVAILABLE = False
+
 # ============= CONFIG =============
-PATH = "data/events_2025_2026.csv"
+PATH = "data/events_2024_2025.csv"
 season = PATH.split('_', 1)[1].replace('.csv', '')
 
 ASSUME_END_CAP = 120
@@ -1832,6 +1845,58 @@ if CB_ZONE_AVAILABLE:
     except Exception as e:
         print(f"❌ Error en cb_zone_builder: {e}")
 
+# ============= 11C) MÉTRICAS DE ARQUEROS =============
+if GK_METRICS_AVAILABLE:
+    print("\n" + "="*70)
+    print("CALCULANDO MÉTRICAS DE ARQUEROS")
+    print("="*70)
+
+    try:
+        # Verificar que df_all existe
+        if 'df_all' not in dir():
+            df_for_gk = df
+        else:
+            df_for_gk = df_all
+
+        print(f"  DataFrame para arqueros: {len(df_for_gk):,} eventos")
+
+        # Calcular métricas de arqueros
+        gk_metrics = calculate_gk_metrics(
+            df=df_for_gk,
+            player_minutes_summary=player_minutes_summary,
+        )
+
+        if not gk_metrics.empty:
+            # Verificar player_ids en común
+            common_ids = set(final_df["player_id"]) & set(gk_metrics["player_id"])
+            print(f"  Player IDs en común con final_df: {len(common_ids)}")
+
+            # Merge con final_df
+            final_df = final_df.merge(
+                gk_metrics,
+                on="player_id",
+                how="left"
+            )
+
+            print(f"  Columnas en final_df después del merge: {len(final_df.columns)}")
+            print(f"✅ Métricas de arqueros agregadas a final_df")
+
+            # Resumen de valores no nulos por métrica
+            gk_cols = [c for c in gk_metrics.columns if c != "player_id"]
+            for col in gk_cols:
+                if col in final_df.columns:
+                    non_null = final_df[col].notna().sum()
+                    print(f"    - {col}: {non_null} valores no nulos")
+        else:
+            print("\n⚠️  No se generaron métricas de arqueros (DataFrame vacío)")
+
+    except Exception as e:
+        print(f"\n❌ Error calculando métricas de arqueros: {e}")
+        import traceback
+        traceback.print_exc()
+else:
+    print("\n⚠️  Módulo goalkeeper_metrics_builder no disponible. Métricas de arqueros omitidas.")
+
 # ============= 12) EXPORTS CON TEMPORADA EN NOMBRE =============
 print("\n" + "="*70)
 print("EXPORTANDO RESULTADOS")
@@ -1841,6 +1906,15 @@ print("="*70)
 output_complete = os.path.join(OUTPUT_DIR, f"all_players_complete_{season}.csv")
 final_df.to_csv(output_complete, index=False, encoding="utf-8-sig")
 print(f"\n✓ CSV EXPORTADO: {output_complete}")
+
+# ============= EXPORT: player_minutes_by_match =============
+output_minutes = os.path.join(OUTPUT_DIR, f"player_minutes_by_match_{season}.csv")
+minutes_by_match_export = minutes_df.merge(
+    player_minutes_summary[["player_id", "player_name", "primary_position"]],
+    on="player_id", how="left"
+)
+minutes_by_match_export.to_csv(output_minutes, index=False)
+print(f"✓ CSV EXPORTADO: {output_minutes} ({len(minutes_by_match_export):,} registros)")
 
 # ============= RESTO DE OUTPUTS: SOLO EN LOG (NO CSV) =============
 print("\n" + "="*70)
