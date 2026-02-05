@@ -373,6 +373,8 @@ def _agg_foot_play(df, gk_ids, pid_col):
         obv = float(grp["obv_total_net"].sum()) if has_obv else 0.0
 
         return pd.Series({
+            "gk_pass_completion_pct": completed / total if total > 0 else np.nan,
+            "gk_pass_obv": obv,
             "gk_long_ball_pct": long_balls / total if total > 0 else np.nan,
             "gk_pressured_passes_def_third": press_def,
             "gk_pressured_passes_def_third_completion_pct": (
@@ -521,6 +523,88 @@ def _agg_penalties(df, pid_col, psxg_col):
     return result
 
 
+def _agg_shots_in_box(linked, pid_col):
+    """
+    Cuenta shots de open play dentro del área penal (x < 18m).
+    
+    Input: DataFrame linked de _build_gk_shot_links (ya tiene shot vinculado)
+    
+    Filtra:
+      - _shot_type == 'Open Play'
+      - x < 18 (coordenada del shot, dentro del área)
+    
+    Retorna:
+      - gk_shots_open_play_in_box_against: Total de shots en área
+    """
+    if linked.empty:
+        return pd.DataFrame()
+    
+    # Verificar que tenemos las columnas necesarias
+    if "_shot_type" not in linked.columns:
+        return pd.DataFrame()
+    
+    # Filtrar open play
+    open_play = linked[linked["_shot_type"] == "Open Play"].copy()
+    
+    if open_play.empty:
+        return pd.DataFrame()
+    
+    # Filtrar dentro del área (x < 18)
+    # La coordenada 'x' puede estar en el shot o en el evento GK
+    # Priorizamos la del shot si existe
+    if "x" in open_play.columns:
+        open_play["_x"] = pd.to_numeric(open_play["x"], errors="coerce")
+        in_box = open_play[open_play["_x"] < BOX_LINE_X].copy()
+    else:
+        # Sin coordenadas, no podemos calcular
+        return pd.DataFrame()
+    
+    if in_box.empty:
+        return pd.DataFrame()
+    
+    # Contar por arquero
+    result = (
+        in_box.groupby(pid_col)
+        .size()
+        .reset_index(name="gk_shots_open_play_in_box_against")
+    )
+    
+    return result
+
+
+def _agg_claims(df, gk_ids, pid_col):
+    """
+    Cuenta eventos de "Claim" (reclamar balones aéreos).
+    
+    Usa goalkeeper_outcome == 'Claim' para identificar claims.
+    
+    Retorna:
+      - gk_claims: Total de claims
+    
+    NOTA: No calculamos claim_success_pct porque no hay columna
+    que indique si el claim fue exitoso o no en datos básicos.
+    """
+    gk_events = df[df[pid_col].isin(gk_ids)].copy()
+    
+    if gk_events.empty or "goalkeeper_outcome" not in gk_events.columns:
+        return pd.DataFrame()
+    
+    # Filtrar eventos con Claim
+    claims = gk_events[gk_events["goalkeeper_outcome"] == "Claim"].copy()
+    
+    if claims.empty:
+        return pd.DataFrame()
+    
+    # Contar por arquero
+    result = (
+        claims.groupby(pid_col)
+        .size()
+        .reset_index(name="gk_claims")
+    )
+    
+    return result
+
+
 # ============= FUNCIÓN PRINCIPAL =============
 
 def calculate_gk_metrics(df, player_minutes_summary):
@@ -595,6 +679,8 @@ def calculate_gk_metrics(df, player_minutes_summary):
     outside_box  = _agg_outside_box(df, gk_ids, pid_col)
     own_goals    = _agg_own_goals(df, gk_ids, pid_col)
     penalties    = _agg_penalties(df, pid_col, psxg_col)
+    shots_in_box = _agg_shots_in_box(linked, pid_col)
+    claims       = _agg_claims(df, gk_ids, pid_col)
 
     # --- STEP 3: Combinar en un solo DataFrame ---
     # Base: todos los GKs que tienen minutos en player_minutes_summary
@@ -616,6 +702,8 @@ def calculate_gk_metrics(df, player_minutes_summary):
         (outside_box,   "outside_box"),
         (own_goals,     "own_goals"),
         (penalties,     "penalties"),
+        (shots_in_box,  "shots_in_box"),
+        (claims,        "claims"),
     ]
 
     for agg_df, label in agg_groups:
@@ -646,6 +734,7 @@ def calculate_gk_metrics(df, player_minutes_summary):
         "gk_psxg_faced_per90":              "gk_psxg_faced",
         "gk_goals_prevented_per90":         "gk_goals_prevented",
         "gk_goals_conceded_per90":          "gk_goals_conceded_total",
+        "gk_pass_obv_per90":                "gk_pass_obv",
         "gk_pressured_passes_def_third_per90": "gk_pressured_passes_def_third",
         "gk_actions_outside_box_per90":     "gk_actions_outside_box",
         # Penalties
@@ -654,6 +743,13 @@ def calculate_gk_metrics(df, player_minutes_summary):
         "gk_penalties_conceded_per90":      "gk_penalties_conceded",
         # Own Goals
         "gk_own_goals_against_per90":       "gk_own_goals_against",
+        # Errors
+        "gk_errors_leading_to_shot_per90":  "gk_errors_leading_to_shot",
+        "gk_errors_leading_to_goal_per90":  "gk_errors_leading_to_goal",
+        # Shots in box
+        "gk_shots_open_play_in_box_against_per90": "gk_shots_open_play_in_box_against",
+        # Claims
+        "gk_claims_per90":                  "gk_claims",
     }
 
     for per90_col, source_col in per90_map.items():
@@ -687,6 +783,8 @@ def calculate_gk_metrics(df, player_minutes_summary):
         "gk_saves_per90",
         "gk_psxg_faced_per90",
         "gk_goals_prevented_per90",
+        "gk_errors_leading_to_shot_per90",
+        "gk_errors_leading_to_goal_per90",
         # Goals Conceded - Totales
         "gk_goals_conceded_shots",
         "gk_goals_conceded_total",
@@ -705,11 +803,20 @@ def calculate_gk_metrics(df, player_minutes_summary):
         "gk_penalties_faced_per90",
         "gk_penalties_saved_per90",
         "gk_penalties_conceded_per90",
+        # Area Domination - Totales
+        "gk_shots_open_play_in_box_against",
+        "gk_claims",
+        # Area Domination - Per90
+        "gk_shots_open_play_in_box_against_per90",
+        "gk_claims_per90",
         # Foot Play - Ratios
+        "gk_pass_completion_pct",
         "gk_long_ball_pct",
         "gk_pressured_passes_def_third_completion_pct",
         # Foot Play - Totales
+        "gk_pass_obv",
         "gk_pressured_passes_def_third",
+        # Foot Play - Per90
         "gk_pass_obv_per90",
         "gk_pressured_passes_def_third_per90",
         # Outside Box - Totales
