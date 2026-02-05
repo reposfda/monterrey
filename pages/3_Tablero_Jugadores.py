@@ -432,13 +432,24 @@ with col_lolli:
         metric_lists: list[tuple[str, float, bool]] = []
         metric_labels: list[str] = []
 
+        # --- alias de categorías para el detalle (Lollipop)
+        cat_alias = {}
+        if pos.lower() == "lateral":
+            cat_alias = {
+                "Defensivo (Exec)": "Defensivo",
+                "Defensivo (OBV)": "Defensivo",
+            }
+
         for cat_name in detail_opts:
             ml = get_detail_metric_list(pos, cat_name, base_dir=BASE_DIR)  # [(metric, w, invert), ...]
             if not ml:
                 continue
+
+            cat_out = cat_alias.get(cat_name, cat_name)  # ✅ acá unificás
+
             for metric, w, inv in ml:
                 metric_lists.append((metric, w, inv))
-                metric_labels.append(f"{cat_name}: {metric}")
+                metric_labels.append(f"{cat_out}: {metric}")  # ✅ ahora queda una sola categoría
 
         if not metric_lists:
             st.warning("No pude leer listas detalladas desde role_config.")
