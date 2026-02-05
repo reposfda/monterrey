@@ -44,4 +44,4 @@ with c2:
         """,
     )
 
-st.info("Si alguna página te marca que no encuentra el per90, revisá la carpeta `outputs/` o seleccioná el archivo desde la UI (lo vamos a dejar automático).")
+st.info("")

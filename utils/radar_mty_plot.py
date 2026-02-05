@@ -1,17 +1,20 @@
-# utils/radar_mty_plot.py
 from __future__ import annotations
-from typing import Sequence, Tuple, Optional, List
+from typing import Sequence, List
 import matplotlib.pyplot as plt
 from mplsoccer import Radar
+from matplotlib import colors as mcolors
 
-# === Paleta Monterrey (ajustá si querés) ===
+# === Paleta Monterrey ===
 MTY_BLUE  = "#0B1F38"
 MTY_GOLD  = "#c49308"
-MTY_PALE  = "#edf2f4"
-MTY_RING  = "#f2d9a6"
-TXT_DARK  = "#0B1F38"
-TXT_RANGE = "#6C969D"
+MTY_RING  = "#FFFFFF"
+ACCENT = "#6CA0DC" 
+TXT_LIGHT = "#FFFFFF"
+TXT_RANGE = "#C7D2E3"
 
+# -----------------------
+# Helpers
+# -----------------------
 def wrap_labels(labels: Sequence[str], max_len: int = 18) -> List[str]:
     out = []
     for label in labels:
@@ -29,7 +32,8 @@ def wrap_labels(labels: Sequence[str], max_len: int = 18) -> List[str]:
         out.append("\n".join(lines))
     return out
 
-def _make_radar(metrics: Sequence[str], low: Sequence[float], high: Sequence[float]) -> Radar:
+
+def _make_radar(metrics, low, high) -> Radar:
     return Radar(
         params=list(metrics),
         min_range=list(low),
@@ -40,49 +44,86 @@ def _make_radar(metrics: Sequence[str], low: Sequence[float], high: Sequence[flo
         center_circle_radius=1,
     )
 
+
 def _apply_style(ax, radar: Radar):
-    radar.draw_circles(ax=ax, facecolor=MTY_PALE, edgecolor=MTY_RING, lw=1.2)
-    radar.draw_range_labels(ax=ax, fontsize=7, fontproperties="monospace", color=TXT_RANGE)
+    ring_rgba = mcolors.to_rgba(MTY_RING, 0.14)
+
+    # ⚠️ IMPORTANTE:
+    # NO pintamos fondo → transparencia real
+    radar.draw_circles(
+        ax=ax,
+        facecolor="none",
+        edgecolor=ring_rgba,
+        lw=1.1
+    )
+
+    radar.draw_range_labels(
+        ax=ax,
+        fontsize=7,
+        fontproperties="monospace",
+        color=TXT_RANGE
+    )
+
     for s in ax.spines.values():
         s.set_visible(False)
 
-def _draw_param_labels(radar: Radar, ax, labels: Sequence[str]):
+
+def _draw_param_labels(radar: Radar, ax, labels):
     radar.params = wrap_labels(labels, max_len=18)
     radar.draw_param_labels(
         ax=ax,
         fontsize=7,
         fontproperties="monospace",
-        color=TXT_DARK,
+        color=TXT_LIGHT,
         offset=1.10
     )
+
 
 def _headers(ax, left: str = "", right: str = ""):
     if left:
         ax.text(
             0.0001, 1.05, left,
-            fontsize=8, ha='left', va='center_baseline',
-            transform=ax.transAxes, fontfamily='monospace', color=MTY_BLUE
+            fontsize=8,
+            ha="left",
+            va="center_baseline",
+            transform=ax.transAxes,
+            fontfamily="monospace",
+            color=TXT_LIGHT,
         )
     if right:
         ax.text(
             1.0, 1.05, right,
-            fontsize=8, ha='right', va='center_baseline',
-            transform=ax.transAxes, fontfamily='monospace', color=MTY_GOLD
+            fontsize=8,
+            ha="right",
+            va="center_baseline",
+            transform=ax.transAxes,
+            fontfamily="monospace",
+            color=MTY_GOLD,
         )
 
+
+# -----------------------
+# Main
+# -----------------------
 def plot_radar(
     *,
-    metrics: Sequence[str],
-    values: Sequence[float],
-    low: Sequence[float],
-    high: Sequence[float],
-    reference: Optional[Sequence[float]] = None,  # si pasás referencia => compare
-    head_left: str = "",
-    head_right: str = "",
-    figsize: Tuple[float, float] = (4.2, 4.2),
+    metrics,
+    values,
+    low,
+    high,
+    reference=None,
+    head_left="",
+    head_right="",
+    figsize=(4.2, 4.2),
 ):
     radar = _make_radar(metrics, low, high)
+
     fig, ax = plt.subplots(figsize=figsize)
+
+    # ✅ transparencia real
+    fig.patch.set_alpha(0)
+    ax.set_facecolor("none")
+
     radar.setup_axis(ax=ax)
     _apply_style(ax, radar)
 
@@ -91,8 +132,8 @@ def plot_radar(
             values=values,
             ax=ax,
             kwargs={
-                "facecolor": MTY_BLUE,
-                "alpha": 0.60,
+                "facecolor": ACCENT,
+                "alpha": 0.55,
                 "edgecolor": "none",
                 "linewidth": 0,
             },
@@ -102,13 +143,22 @@ def plot_radar(
             ax=ax,
             values=values,
             compare_values=reference,
-            kwargs_radar={"facecolor": MTY_BLUE, "alpha": 0.60, "edgecolor": "none", "linewidth": 0},
-            kwargs_compare={"facecolor": MTY_GOLD, "alpha": 0.55, "edgecolor": "none", "linewidth": 0},
+            kwargs_radar={
+                "facecolor": ACCENT,
+                "alpha": 0.55,
+                "edgecolor": "none",
+                "linewidth": 0,
+            },
+            kwargs_compare={
+                "facecolor": MTY_GOLD,
+                "alpha": 0.45,
+                "edgecolor": "none",
+                "linewidth": 0,
+            },
         )
 
     _draw_param_labels(radar, ax, metrics)
     _headers(ax, left=head_left, right=head_right)
+
     fig.tight_layout(pad=0.3)
-    #fig.patch.set_alpha(0)   # fondo transparente
-    ax.set_facecolor("none")
     return fig
