@@ -81,6 +81,38 @@ def filter_by_position_group(df: pd.DataFrame, group: str) -> pd.DataFrame:
     
     return df[mask].copy()
 
+def _fix_mojibake_series(s: pd.Series) -> pd.Series:
+    if s.dtype != "object":
+        return s
+    x = s.astype("string")
+    mask = x.str.contains("Ã|Â|�", na=False)
+
+    def _fix_one(val):
+        if val is None:
+            return val
+        try:
+            return val.encode("latin1", errors="ignore").decode("utf-8", errors="ignore")
+        except Exception:
+            return val
+
+    x.loc[mask] = x.loc[mask].apply(_fix_one)
+    return x
+
+
+def read_csv_robust(path: Path) -> pd.DataFrame:
+    # 1) utf-8-sig (ideal para exports)
+    try:
+        df = pd.read_csv(path, low_memory=False, encoding="utf-8-sig")
+    except Exception:
+        # 2) fallback clásico Windows
+        df = pd.read_csv(path, low_memory=False, encoding="cp1252")
+
+    # fix mojibake en todas las columnas object
+    for c in df.columns:
+        df[c] = _fix_mojibake_series(df[c])
+
+    return df
+
 
 # ============= SCORING PRINCIPAL =============
 def run_arquero_scoring(
@@ -112,7 +144,7 @@ def run_arquero_scoring(
     
     # --- Cargar datos ---
     print(f"\n📂 Cargando: {complete_csv}")
-    df = pd.read_csv(complete_csv, low_memory=False, encoding='latin1')
+    df = read_csv_robust(complete_csv)
     print(f"✓ Total jugadores en archivo: {len(df):,}")
     
     # --- Filtrar por posición ---
