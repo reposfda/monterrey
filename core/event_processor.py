@@ -64,11 +64,11 @@ except Exception as e:
     GK_METRICS_AVAILABLE = False
 
 # ============= CONFIG =============
-# ✅ Path del archivo de eventos desde config
+# Path del archivo de eventos desde config
 PATH = str(EVENTS_CSV)
 season = PATH.split('_', 1)[1].replace('.csv', '')
 
-# ✅ Configuraciones desde config.Processing
+# Configuraciones desde config.Processing
 ASSUME_END_CAP = Processing.ASSUME_END_CAP
 OUTPUT_DIR = str(OUTPUTS_DIR)
 
@@ -77,6 +77,11 @@ class Logger:
     """Clase para escribir simultáneamente en consola y archivo"""
     def __init__(self, filename):
         self.terminal = sys.stdout
+        
+        # Asegurar que el directorio padre existe
+        filepath = Path(filename)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        
         self.log = open(filename, 'w', encoding='utf-8')
         
     def write(self, message):
@@ -90,7 +95,7 @@ class Logger:
     def close(self):
         self.log.close()
 
-# ✅ Asegurar que directorio de outputs existe
+# Asegurar que directorio de outputs existe
 ensure_directories()
 
 # Configurar logging
@@ -1833,7 +1838,7 @@ if OBV_LANES_AVAILABLE:
             )
             
             print(f"  Columnas en final_df DESPUÉS del merge: {len(final_df.columns)}")
-            print(f"✅ Métricas de carriles agregadas a final_df")
+            print(f"Métricas de carriles agregadas a final_df")
             print(f"  Jugadores con lane_bias_index: {lanes_metrics['lane_bias_index'].notna().sum():,}")
             print(f"  Columnas agregadas: {list(lanes_metrics.columns[1:])}")
             
@@ -1864,7 +1869,7 @@ if CB_ZONE_AVAILABLE:
         )
         if not zone_metrics.empty:
             final_df = final_df.merge(zone_metrics, on="player_id", how="left")
-            print(f"✅ Métricas de zona agregadas: {len(zone_metrics):,} jugadores")
+            print(f"Métricas de zona agregadas: {len(zone_metrics):,} jugadores")
     except Exception as e:
         print(f"❌ Error en cb_zone_builder: {e}")
 
@@ -1902,7 +1907,7 @@ if GK_METRICS_AVAILABLE:
             )
 
             print(f"  Columnas en final_df después del merge: {len(final_df.columns)}")
-            print(f"✅ Métricas de arqueros agregadas a final_df")
+            print(f"Métricas de arqueros agregadas a final_df")
 
             # Resumen de valores no nulos por métrica
             gk_cols = [c for c in gk_metrics.columns if c != "player_id"]
@@ -2190,7 +2195,7 @@ if into_final_third_metrics:
             print(f"    Promedio per90: {avg_per90:.2f}")
 
 print("="*70)
-print(f"\n✅ ANÁLISIS COMPLETADO EXITOSAMENTE")
+print(f"\nANÁLISIS COMPLETADO EXITOSAMENTE")
 print(f"Fin: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print(f"Log guardado en: {log_filename}")
 print("="*70)
