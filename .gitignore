@@ -1,5 +1,43 @@
-env3/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
 notebook/
+old/
 
-**.csv
-**.txt
+# Outputs
+outputs/*.csv
+outputs/*.txt
+outputs/**/*.csv
+outputs/**/*.txt
+!outputs/.gitkeep
+
+# Temporales
+*.tmp
+_tmp_*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+env3/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Data (excepto estructura)
+data/seasons/*/events.csv
+!data/seasons/.gitkeep
+data/
