@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from utils.text_wrapper import wrap_two_lines
+
 
 # Colores default (si no los pasás por parámetro)
 PRIMARY_BG = "#0B1F38"
@@ -11,6 +13,12 @@ ACCENT = "#6CA0DC"
 TEXT = "#FFFFFF"
 GOLD = "#c49308"
 GOLD_SOFT = "#d6b35f"
+
+# --- layout estándar ---
+STD_ROWS = 16          # cantidad “ideal” de filas visibles
+MAX_ROWS = 22          # a partir de acá sí dejamos crecer
+STD_FIG_H = 6.8        # altura estándar final (ajustable)
+
 
 def plot_lollipop_mty(
     labels: list[str],
@@ -85,7 +93,17 @@ def plot_lollipop_mty(
 
     y = np.array(y, dtype="float64")
 
-    fig_h = max(min_h, row_h * (len(dfp) + 0.8 * len(dfp["category"].unique())) + 1.1)
+    n_rows = len(dfp)
+    n_cats = dfp["category"].nunique()
+
+    # altura base estándar
+    fig_h = STD_FIG_H
+
+    # si hay MUCHAS métricas, dejamos crecer un poco
+    if n_rows > MAX_ROWS:
+        extra_rows = n_rows - MAX_ROWS
+        fig_h += extra_rows * row_h * 0.9
+
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor(PRIMARY_BG)
     ax.set_facecolor(PRIMARY_BG)
@@ -99,7 +117,12 @@ def plot_lollipop_mty(
         ax.hlines(yi, xlim[0], v, color=ACCENT, alpha=0.35, linewidth=3, zorder=1)
 
 
-    ax.scatter(dfp["value"], y, s=90, color=ACCENT, edgecolor="white", linewidth=1.2, zorder=3, label="Jugador")
+    ax.scatter(
+        dfp["value"], y,
+        s=90, color=ACCENT, edgecolor="white", linewidth=1.2,
+        zorder=3,
+        label=wrap_two_lines("Jugador", max_chars=22),
+    )
 
 
     # --- referencia
@@ -116,7 +139,7 @@ def plot_lollipop_mty(
             if title_right:
                 ax.text(
                     x_ref,
-                    1.02,
+                    1.0,
                     title_right,
                     transform=ax.get_xaxis_transform(),
                     ha="center",
@@ -128,8 +151,14 @@ def plot_lollipop_mty(
                 )
         else:
             # ✅ compare jugador (punto + dumbbell)
-            ax.scatter(dfp["ref"], y, s=60, color=GOLD, edgecolor="white", linewidth=1.0, zorder=4, label=title_right or "Referencia")
+            ref_label = wrap_two_lines((title_right or "Referencia"), max_chars=22)
 
+            ax.scatter(
+                dfp["ref"], y,
+                s=60, color=GOLD, edgecolor="white", linewidth=1.0,
+                zorder=4,
+                label=ref_label,  # ✅ wrap ya en el label
+            )
             for yi, v, r in zip(y, dfp["value"].tolist(), dfp["ref"].tolist()):
                 if pd.isna(r):
                     continue
@@ -259,18 +288,23 @@ def plot_lollipop_mty(
         zorder=10,
     )
 
-    # legend
+    # legend (afuera)
     if reference is not None and not (is_percentil and reference_kind == "avg"):
         leg = ax.legend(
-            loc="lower right",
+            loc="upper left",
+            bbox_to_anchor=(1.01, 1.00),
+            borderaxespad=0.0,
             frameon=True,
             facecolor=SECONDARY_BG,
             edgecolor="none",
             fontsize=9.2,
         )
+
+        # ✅ aplicar wrapper a los textos reales de la leyenda
         for t in leg.get_texts():
+            t.set_text(wrap_two_lines(t.get_text(), max_chars=22))
             t.set_color(TEXT)
             t.set_fontfamily(font_family)
 
-    fig.subplots_adjust(left=0.40, right=0.98, top=0.90, bottom=0.10)
+    fig.subplots_adjust(left=0.40, right=0.76, top=0.90, bottom=0.10)
     return fig
