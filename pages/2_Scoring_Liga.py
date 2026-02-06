@@ -13,16 +13,8 @@ from utils.loaders import load_per90
 from utils.filters import sidebar_filters
 from utils.metrics_labels import COL_LABELS_ES
 from utils.role_config import get_macro_config
-from positions_config import POSITION_MAP
 
-from position_scoring_golero import run_goalkeeper_scoring
-from position_scoring_defensor_central import run_cb_scoring
-from position_scoring_delantero import run_delantero_scoring
-from position_scoring_extremos import run_extremo_scoring
-from position_scoring_interior import run_interior_scoring
-from position_scoring_volante import score_volante_df
-from position_scoring_lateral import score_lateral_df
-
+from utils.scoring_wrappers import compute_scoring_from_df
 
 # =========================================
 # CONFIG + ESTILO
@@ -136,111 +128,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-# =========================================
-# SCORING WRAPPER
-# =========================================
-@st.cache_data(show_spinner=False)
-def compute_scoring_from_df(df_base, position_key, min_minutes, min_matches, selected_teams):
-    df = df_base.copy()
-
-    if selected_teams:
-        if "teams" in df.columns:
-            df = df[df["teams"].astype(str).isin([str(t) for t in selected_teams])].copy()
-        elif "team_name" in df.columns:
-            df = df[df["team_name"].astype(str).isin([str(t) for t in selected_teams])].copy()
-
-    if position_key == "Golero":
-        return run_goalkeeper_scoring(
-            df=df,
-            position_group="Golero",
-            min_minutes=min_minutes,
-            min_matches=min_matches,
-            flag_q=0.75,
-        )
-
-    if position_key == "Volante":
-        return score_volante_df(
-            per90_df=df,
-            position_group="Volante",
-            min_minutes=min_minutes,
-            min_matches=min_matches,
-            flag_q=0.75,
-            verbose=False,
-        )
-
-    if position_key == "Lateral":
-        return score_lateral_df(
-            per90_df=df,
-            position_group="Lateral",
-            min_minutes=min_minutes,
-            min_matches=min_matches,
-            flag_q=0.75,
-            def_exec_w=0.60,
-            def_obv_w=0.40,
-            verbose=False,
-        )
-
-    if position_key == "Interior/Mediapunta":
-        return run_interior_scoring(
-            df=df,
-            position_group="Interior/Mediapunta",
-            min_minutes=min_minutes,
-            min_matches=min_matches,
-            flag_q=0.75,
-        )
-
-    if position_key == "Extremo":
-        return run_extremo_scoring(
-            df=df,
-            position_group="Extremo",
-            min_minutes=min_minutes,
-            min_matches=min_matches,
-            flag_q=0.75,
-        )
-
-    if position_key == "Delantero":
-        return run_delantero_scoring(
-            df=df,
-            position_group="Delantero",
-            min_minutes=min_minutes,
-            min_matches=min_matches,
-            flag_q=0.75,
-        )
-
-    if position_key == "Zaguero":
-        return run_cb_scoring(
-            df=df,
-            position_group="Zaguero",
-            min_minutes=min_minutes,
-            min_matches=min_matches,
-            flag_q=0.75,
-        )
-
-    raise ValueError(f"Posición no soportada: {position_key}")
-
-
-def pick_category_score_cols(df: pd.DataFrame) -> list[str]:
-    """
-    Devuelve columnas de score por categoría (excluye overall/total).
-    Busca patrones comunes en tus scripts:
-    - 'score_' prefijo
-    - o 'Score_' prefijo
-    y excluye overall/total.
-    """
-    candidates = []
-    for c in df.columns:
-        cl = c.lower()
-        if cl.startswith("score_") or cl.startswith("score"):
-            # excluir overall/total
-            if any(k in cl for k in ["overall", "total"]):
-                continue
-            # evitar columnas que no sean numéricas (por si acaso)
-            candidates.append(c)
-
-    # ordenar para que quede estable
-    return sorted(set(candidates))
-
 
 # =========================================
 # HEADER
@@ -437,10 +324,6 @@ with st.expander("Ver ranking completo"):
 # =========================================
 st.markdown("---")
 st.subheader("Distribución por categoría")
-
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
 
 # --- Fallback paleta
 PRIMARY_BG = globals().get("PRIMARY_BG", "#0B1F38")

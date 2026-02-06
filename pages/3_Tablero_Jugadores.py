@@ -10,6 +10,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 
+from utils.scoring_wrappers import compute_scoring_from_df
+
 # =========================================================
 # STREAMLIT CONFIG (DEBE SER LO PRIMERO)
 # =========================================================
@@ -220,8 +222,8 @@ min_matches = 3
 # SCORING (cohorte filtrada)
 # =========================================================
 with st.spinner("Calculando scoring…"):
-    scores = compute_scoring(
-        per90_path=str(PER90_PATH),
+    scores = compute_scoring_from_df(
+        df_base=df_base,
         position_key=pos,
         min_minutes=min_minutes,
         min_matches=min_matches,
