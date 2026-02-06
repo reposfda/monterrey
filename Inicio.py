@@ -1,41 +1,43 @@
 # app.py
 # -*- coding: utf-8 -*-
+"""
+Página principal de la aplicación Monterrey Scoring App.
+Landing page con navegación a las secciones principales.
+"""
 from __future__ import annotations
-from pathlib import Path
 import streamlit as st
 
-st.set_page_config(page_title="Monterrey – Scoring App", layout="wide")
+# Importar desde config
+from config import LOGO_PATH, ProjectInfo, apply_global_styles
 
-BASE_DIR = Path(__file__).resolve().parent
-LOGO_PATH = BASE_DIR / "assets" / "monterrey_logo.png"
-
-PRIMARY_BG = "#0B1F38"
-SECONDARY_BG = "#091325"
-ACCENT = "#6CA0DC"
-TEXT = "#FFFFFF"
-
-st.markdown(
-    f"""
-    <style>
-        .stApp {{ background-color: {PRIMARY_BG}; }}
-        header[data-testid="stHeader"] {{ background-color: transparent; }}
-        [data-testid="stSidebar"] > div:first-child {{ background-color: {SECONDARY_BG}; }}
-        h1, h2, h3, h4, h5, h6, p, label {{ color: {TEXT} !important; }}
-        a {{ color: {ACCENT} !important; }}
-    </style>
-    """,
-    unsafe_allow_html=True,
+# =============================================================================
+# CONFIGURACIÓN DE PÁGINA
+# =============================================================================
+st.set_page_config(
+    page_title=f"{ProjectInfo.CLUB} – Scoring App",
+    layout="wide",
+    page_icon="⚽"
 )
 
-c1, c2 = st.columns([1, 5])
-with c1:
+# Aplicar estilos globales
+apply_global_styles()
+
+# =============================================================================
+# CONTENIDO PRINCIPAL
+# =============================================================================
+
+# Header con logo y título
+col_logo, col_title = st.columns([1, 5])
+
+with col_logo:
     if LOGO_PATH.exists():
         st.image(str(LOGO_PATH), width=90)
 
-with c2:
+with col_title:
     st.markdown(
-        """
-        # Scoring App – Monterrey
+        f"""
+        # {ProjectInfo.NAME}
+        
         Diseñada para asistir a las máximas autoridades del CFM en la evaluación estratégica de renovar, renegociar o no extender los contratos de los futbolistas profesionales.
 
         Navega a través de las páginas de la columna izquierda:
@@ -46,4 +48,16 @@ with c2:
         """,
     )
 
-st.info("")
+# Footer con información
+st.markdown("---")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown(f"**Versión:** {ProjectInfo.VERSION}")
+
+with col2:
+    st.markdown(f"**Club:** {ProjectInfo.CLUB}")
+
+with col3:
+    if ProjectInfo.CLUB_WEBSITE:
+        st.markdown(f"[🌐 Sitio Web]({ProjectInfo.CLUB_WEBSITE})")
