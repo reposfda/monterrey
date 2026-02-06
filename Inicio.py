@@ -36,11 +36,12 @@ with c2:
     st.markdown(
         """
         # Scoring App – Monterrey
-        **Objetivo:** ranking y perfiles por posición para apoyar scouting / renovaciones.
-        
-        Navegá por las páginas desde el sidebar:
-        - **Scoring Liga (Ranking):** filtros de posición / minutos / edad + Top 10.
-        - (Próximas) **Scoring Monterrey**, **Comparativas**, **Fichas**.
+        Diseñada para asistir a las máximas autoridades del CFM en la evaluación estratégica de renovar, renegociar o no extender los contratos de los futbolistas profesionales.
+
+        Navega a través de las páginas de la columna izquierda:
+
+        **Scoring Liga (Ranking)**: filtros por posición, minutos, edad y top 10.
+        **Tablero Jugadores**: Evaluación individual de cada jugador y referencias ante la liga.
         """,
     )
 
