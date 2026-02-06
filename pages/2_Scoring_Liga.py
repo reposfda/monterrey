@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 from utils.loaders import load_per90
 from utils.filters import sidebar_filters
 
+from position_scoring_golero import run_goalkeeper_scoring
 from position_scoring_defensor_central import run_cb_scoring
 from position_scoring_delantero import run_delantero_scoring
 from position_scoring_extremos import run_extremo_scoring
@@ -159,6 +160,16 @@ def compute_scoring(
 
     out_tmp = (Path("outputs") / "_tmp_scoring.csv")
     out_tmp.parent.mkdir(parents=True, exist_ok=True)
+
+    if position_key == "Golero":
+        return run_goalkeeper_scoring(
+            complete_csv=tmp_path,
+            out_csv=out_tmp,
+            position_group="Golero",
+            min_minutes=min_minutes,
+            min_matches=min_matches,
+            flag_q=0.75,
+        )
 
     if position_key == "Zaguero":
         out = run_cb_scoring(

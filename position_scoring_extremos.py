@@ -414,8 +414,8 @@ if __name__ == "__main__":
     from pathlib import Path
     
     # Rutas
-    per90_csv = Path("outputs/all_players_complete_2024_2025.csv")
-    out_csv = Path("outputs/extremo_scores_2024_2025.csv")
+    per90_csv = Path("outputs/all_players_complete_2025_2026.csv")
+    out_csv = Path("outputs/extremo_scores_2025_2026.csv")
     
     # Ejecutar scoring para extremos
     scores = run_extremo_scoring(

@@ -47,7 +47,7 @@ except Exception as e:
     GK_METRICS_AVAILABLE = False
 
 # ============= CONFIG =============
-PATH = "data/events_2024_2025.csv"
+PATH = "data/events_2025_2026.csv"
 season = PATH.split('_', 1)[1].replace('.csv', '')
 
 ASSUME_END_CAP = 120

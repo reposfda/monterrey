@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema de Scoring para Arqueros
+Sistema de Scoring para Goleros
 Versión adaptada del sistema de scoring de delanteros
 
 Categorías:
@@ -10,7 +10,7 @@ Categorías:
 4. Outside Box - Sweeper keeper
 
 Requiere:
-- all_players_complete_{season}.csv (output del script principal con métricas de arqueros)
+- all_players_complete_{season}.csv (output del script principal con métricas de goleros)
 - positions_config.py (módulo de configuración)
 """
 
@@ -68,7 +68,7 @@ def filter_by_position_group(df: pd.DataFrame, group: str) -> pd.DataFrame:
     
     Args:
         df: DataFrame con columna 'primary_position'
-        group: Nombre del grupo (ej: "Arquero", "Delantero")
+        group: Nombre del grupo (ej: "Golero", "Delantero")
         
     Returns:
         DataFrame filtrado
@@ -115,21 +115,21 @@ def read_csv_robust(path: Path) -> pd.DataFrame:
 
 
 # ============= SCORING PRINCIPAL =============
-def run_arquero_scoring(
+def run_goalkeeper_scoring(
     complete_csv: Path,
     out_csv: Path,
-    position_group: str = "Arquero",
+    position_group: str = "Golero",
     min_minutes: int = 450,
     min_matches: int = 3,
     flag_q: float = 0.75,
 ):
     """
-    Calcula scoring de arqueros usando el CSV complete.
+    Calcula scoring de goleros usando el CSV complete.
     
     Args:
         complete_csv: Path al archivo all_players_complete_{season}.csv
         out_csv: Path de salida para scores
-        position_group: Grupo de posición ("Arquero")
+        position_group: Grupo de posición ("Golero")
         min_minutes: Minutos mínimos requeridos
         min_matches: Partidos mínimos requeridos
         flag_q: Cuantil para flags (0.75 = top 25%)
@@ -332,7 +332,7 @@ def run_arquero_scoring(
     print("\n📈 Distribución de flags:")
     for flag, count in flag_counts.items():
         pct = count/len(base)*100 if len(base) > 0 else 0
-        print(f"  {flag}: {count} arqueros ({pct:.1f}%)")
+        print(f"  {flag}: {count} goleros ({pct:.1f}%)")
     
     # =========================
     # OUTPUT
@@ -356,10 +356,10 @@ def run_arquero_scoring(
     print("\n✅ SCORING COMPLETADO")
     print("="*70)
     print(f"📁 Output guardado en: {out_csv}")
-    print(f"📊 Arqueros evaluados: {len(out):,}")
+    print(f"📊 Goleros evaluados: {len(out):,}")
     
     if not out.empty:
-        print(f"\n🏆 Top 5 Arqueros:")
+        print(f"\n🏆 Top 5 Goleros:")
         top5_cols = ["player_name", "team_name", "Score_Overall", "Flags"]
         top5_cols = [c for c in top5_cols if c in out.columns]
         print(out[top5_cols].head().to_string(index=False))
@@ -376,11 +376,11 @@ if __name__ == "__main__":
     from pathlib import Path
     
     # Rutas
-    complete_csv = Path("outputs/all_players_complete_2024_2025.csv")
-    out_csv = Path("outputs/golero_scores_2024_2025.csv")
+    complete_csv = Path("outputs/all_players_complete_2025_2026.csv")
+    out_csv = Path("outputs/golero_scores_2025_2026.csv")
     
-    # Ejecutar scoring para arqueros
-    scores = run_arquero_scoring(
+    # Ejecutar scoring para goleros
+    scores = run_goalkeeper_scoring(
         complete_csv=complete_csv,
         out_csv=out_csv,
         position_group="Golero",

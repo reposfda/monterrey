@@ -90,4 +90,8 @@ METRICS_ES = {
     # --- Profundidad --- 
     "n_events_third_attacking_pass_cross_openplay_per90": "Centros de juego abierto en último tercio c/90",
     "n_events_third_attacking_pass_per90": "Pases en último tercio c/90"
+
+    # --- Box to box --- 
+    ""
+
 }

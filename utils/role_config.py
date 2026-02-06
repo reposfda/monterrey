@@ -9,6 +9,13 @@ from typing import Dict, List
 # MACRO: categorías del rol (Score_*)
 # =========================
 ROLE_MACRO = {
+    "Golero": [
+        ("Score_Effectiveness", "Efectividad"),
+        ("Score_Area_Domination", "Dominio del área"),
+        ("Score_Foot_Play", "Juego con los pies"),
+        ("Score_Outside_Box", "Acciones fuera del área"),
+    ],
+
     "Zaguero": [
         ("Score_ControlDefensivo", "Control Defensivo"),
         ("Score_AccionDefensiva", "Acción Defensiva"),
@@ -52,6 +59,16 @@ ROLE_MACRO = {
 # (se parsean desde el .py, así evitás duplicar las listas)
 # =========================
 ROLE_DETAIL_SPECS = {
+    "Golero": {
+        "file": "position_scoring_golero.py",
+        "cats": {
+            "Efectividad": "EFFECTIVENESS",
+            "Dominio del área": "AREA_DOMINATION",
+            "Juego con los pies": "FOOT_PLAY",
+            "Acciones fuera del área": "OUTSIDE_BOX",
+        },
+    },
+
     "Zaguero": {
         "file": "position_scoring_defensor_central.py",
         "cats": {
@@ -180,6 +197,14 @@ def get_detail_metric_list(position_key: str, detail_label: str, base_dir: Path)
 # Pesos de categorías (exactos)
 # --------------------
 CATEGORY_WEIGHTS_BY_POSITION: Dict[str, Dict[str, float]] = {
+
+    "Golero": {
+        "Score_Effectiveness": 0.50,
+        "Score_Area_Domination": 0.20,
+        "Score_Foot_Play": 0.15,
+        "Score_Outside_Box": 0.15,
+    },
+
     # Zaguero  -> position_scoring_defensor_central.py (CAT_W)
     "Zaguero": {
         "Score_AccionDefensiva": 0.25,
