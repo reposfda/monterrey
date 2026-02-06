@@ -40,15 +40,11 @@ with col_title:
         
         Diseñada para asistir a las máximas autoridades del CFM en la evaluación estratégica de renovar, renegociar o no extender los contratos de los futbolistas profesionales.
 
-        ### Navegación
+        Navega a través de las páginas de la columna izquierda:
+
+        **Scoring Liga (Ranking)**: filtros por posición, minutos, edad y top 10.
         
-        Navega a través de las páginas de la columna izquierda:        
-               
-        Usá el sidebar para acceder a las diferentes secciones:
-        
-        - **Scoring Liga (Ranking):** Filtros de posición, minutos y equipos. Top 10 jugadores.
-        - **Tablero Jugadores:** Comparación detallada entre jugadores con radares y métricas.
-        
+        **Tablero Jugadores**: Evaluación individual de cada jugador y referencias ante la liga.
         """,
     )
 
