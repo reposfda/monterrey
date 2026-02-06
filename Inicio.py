@@ -41,6 +41,7 @@ with c2:
         Navega a través de las páginas de la columna izquierda:
 
         **Scoring Liga (Ranking)**: filtros por posición, minutos, edad y top 10.
+        
         **Tablero Jugadores**: Evaluación individual de cada jugador y referencias ante la liga.
         """,
     )
