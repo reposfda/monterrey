@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Sistema de Scoring para Defensores Centrales (CB)
-Adaptado al pipeline per90 (estilo interiores)
+Adaptado al pipeline per90 (df-first)
 
-- Usa CSV per90
+- Acepta df o per90_csv
 - Filtra por posición, minutos y partidos
 - Calcula percentiles, scores, flags y tags
 """
@@ -12,7 +12,9 @@ from __future__ import annotations
 from pathlib import Path
 import numpy as np
 import pandas as pd
+
 from positions_config import normalize_group, sb_positions_for
+from utils.scoring_io import read_input 
 
 
 # =========================
@@ -35,6 +37,9 @@ def wavg(df: pd.DataFrame, cols_weights):
         return pd.Series(np.nan, index=df.index)
 
     w = np.array([w for c, w in cols_weights if c in df.columns], dtype="float64")
+    if w.sum() <= 0:
+        return pd.Series(np.nan, index=df.index)
+
     w = w / w.sum()
     mat = np.vstack([df[c].to_numpy(dtype="float64") for c in cols]).T
     num = np.nansum(mat * w, axis=1)
@@ -104,115 +109,134 @@ CAT_W = {
 
 
 # =========================
-# SCORING PRINCIPAL
+# SCORING PRINCIPAL (df-first)
 # =========================
 def run_cb_scoring(
-    per90_csv: Path,
-    out_csv: Path,
+    per90_csv: Path | None = None,
+    out_csv: Path | None = None,
+    df: pd.DataFrame | None = None,
     position_group: str = "Zaguero",
     min_minutes: int = 600,
     min_matches: int = 5,
     flag_q: float = 0.75,
-):
+) -> pd.DataFrame:
 
     print("=" * 70)
     print("SCORING DEFENSORES CENTRALES")
     print("=" * 70)
 
-    df = pd.read_csv(per90_csv, low_memory=False)
-    print(f"✓ Jugadores totales: {len(df):,}")
+    df0 = read_input(per90_csv=per90_csv, df=df)
+    print(f"✓ Jugadores totales: {len(df0):,}")
 
     # --- Filtro posición ---
-    df = filter_by_position_group(df, position_group)
-    print(f"✓ Centrales: {len(df):,}")
+    base = filter_by_position_group(df0, position_group)
+    print(f"✓ Centrales: {len(base):,}")
 
     # --- Filtro minutos / partidos ---
-    df = df[df["total_minutes"] >= min_minutes]
-    df = df[df["matches_played"] >= min_matches]
-    print(f"✓ Tras filtros: {len(df):,}")
+    if "total_minutes" in base.columns:
+        base = base[base["total_minutes"] >= min_minutes].copy()
+    if "matches_played" in base.columns:
+        base = base[base["matches_played"] >= min_matches].copy()
 
-    if df.empty:
+    print(f"✓ Tras filtros: {len(base):,}")
+
+    if base.empty:
         raise ValueError("No hay centrales que cumplan los filtros.")
 
-    # Renombres
-    df = df.rename(columns={
+    # --- Renombres esperados por la app ---
+    base = base.rename(columns={
         "teams": "team_name",
         "matches_played": "matches",
         "total_minutes": "minutes",
     })
 
-    # --- Numeric ---
-    all_metrics = {c for items in CATS.values() for c, _, _ in items}
-    for col in all_metrics:
-        if col in df.columns:
-            df[col] = safe_numeric(df[col])
+    # --- Numeric: convertir TODAS las métricas usadas ---
+    ALL_ITEMS = [item for items in CATS.values() for item in items]
+    for col, _, _ in ALL_ITEMS:
+        if col in base.columns:
+            base[col] = safe_numeric(base[col])
 
     # --- Percentiles ---
-    for items in CATS.values():
-        for col, _, inv in items:
-            if col not in df.columns:
-                continue
-            x = -df[col] if inv else df[col]
-            df[f"pct__{col}"] = pct_rank_0_100(x)
+    missing = []
+    for col, _, inv in ALL_ITEMS:
+        if col not in base.columns:
+            missing.append(col)
+            continue
+        x = -base[col] if inv else base[col]
+        base[f"pct__{col}"] = pct_rank_0_100(x)
+
+    if missing:
+        print(f"⚠️  Métricas faltantes (ignoradas): {len(missing)}")
+        for c in missing[:12]:
+            print(f"  - {c}")
+        if len(missing) > 12:
+            print(f"  ... y {len(missing)-12} más")
 
     # --- Scores por categoría ---
     for cat, items in CATS.items():
-        pct_items = [(f"pct__{c}", w) for c, w, _ in items if f"pct__{c}" in df.columns]
-        df[cat] = wavg(df, pct_items)
+        pct_items = [(f"pct__{c}", w) for c, w, _ in items if f"pct__{c}" in base.columns]
+        base[cat] = wavg(base, pct_items) if pct_items else np.nan
 
     # --- Score final ---
-    df["Score_Overall"] = wavg(df, list(CAT_W.items()))
+    base["Score_Overall"] = wavg(base, list(CAT_W.items()))
 
-    # --- Flags ---
+    # --- Flags (robusto si alguna categoría quedó toda NaN) ---
     for cat in CATS.keys():
-        threshold = df[cat].quantile(flag_q)
-        df[f"Flag_{cat.replace('Score_', '')}"] = df[cat] >= threshold
+        if cat not in base.columns:
+            base[f"Flag_{cat.replace('Score_', '')}"] = False
+            continue
+
+        if base[cat].notna().sum() == 0:
+            base[f"Flag_{cat.replace('Score_', '')}"] = False
+            continue
+
+        threshold = base[cat].quantile(flag_q)
+        base[f"Flag_{cat.replace('Score_', '')}"] = base[cat] >= threshold
 
     # --- Tags ---
     def tags(r):
         t = []
-        if r["Flag_AccionDefensiva"]: t.append("Acción Def")
-        if r["Flag_ControlDefensivo"]: t.append("Control Def")
-        if r["Flag_Progresion"]: t.append("Progresión")
-        if r["Flag_ImpactoOfensivo"]: t.append("Ofensivo")
+        if r.get("Flag_AccionDefensiva", False): t.append("Acción Def")
+        if r.get("Flag_ControlDefensivo", False): t.append("Control Def")
+        if r.get("Flag_Progresion", False): t.append("Progresión")
+        if r.get("Flag_ImpactoOfensivo", False): t.append("Ofensivo")
         return " | ".join(t) if t else "Balanceado"
 
-    df["Flags"] = df.apply(tags, axis=1)
+    base["Flags"] = base.apply(tags, axis=1)
 
     # --- Output ---
     cols = [
-        "player_name", "team_name", "minutes", "matches",
+        "player_id", "player_name", "team_name", "minutes", "matches",
+        "primary_position", "primary_position_share",
         "Score_Overall",
         *CATS.keys(),
         "Flags",
     ]
-    cols = [c for c in cols if c in df.columns]
+    cols = [c for c in cols if c in base.columns]
 
-    out = df[cols].sort_values("Score_Overall", ascending=False)
-    out_csv.parent.mkdir(parents=True, exist_ok=True)
-    out.to_csv(out_csv, index=False)
+    out = base[cols].sort_values("Score_Overall", ascending=False)
 
-    print(f"✅ Output guardado en {out_csv}")
+    if out_csv is not None:
+        out_csv.parent.mkdir(parents=True, exist_ok=True)
+        out.to_csv(out_csv, index=False, encoding="utf-8")
+        print(f"✅ Output guardado en {out_csv}")
+
     print("=" * 70)
-
     return out
+
 
 # =========================
 # EJEMPLO DE USO
 # =========================
 if __name__ == "__main__":
-    from pathlib import Path
-    
-    # Rutas
     per90_csv = Path("outputs/all_players_complete_2025_2026.csv")
     out_csv = Path("outputs/zaguero_scores_2025_2026.csv")
-    
-    # Ejecutar scoring para zagueros
+
     scores = run_cb_scoring(
         per90_csv=per90_csv,
         out_csv=out_csv,
         position_group="Zaguero",
         min_minutes=450,
         min_matches=3,
-        flag_q=0.75,  # Top 25%
+        flag_q=0.75,
     )

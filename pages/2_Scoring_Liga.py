@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -12,14 +11,17 @@ import plotly.graph_objects as go
 
 from utils.loaders import load_per90
 from utils.filters import sidebar_filters
+from utils.metrics_labels import COL_LABELS_ES
+from utils.role_config import get_macro_config
+from positions_config import POSITION_MAP
 
 from position_scoring_golero import run_goalkeeper_scoring
 from position_scoring_defensor_central import run_cb_scoring
 from position_scoring_delantero import run_delantero_scoring
 from position_scoring_extremos import run_extremo_scoring
 from position_scoring_interior import run_interior_scoring
-from position_scoring_lateral import run_position_scoring
-from position_scoring_volante import run_volante_scoring
+from position_scoring_volante import score_volante_df
+from position_scoring_lateral import score_lateral_df
 
 
 # =========================================
@@ -139,104 +141,84 @@ st.markdown(
 # SCORING WRAPPER
 # =========================================
 @st.cache_data(show_spinner=False)
-def compute_scoring(
-    per90_path: str,
-    position_key: str,
-    min_minutes: int,
-    min_matches: int,
-    selected_teams: list[str],
-) -> pd.DataFrame:
-    df = load_per90(Path(per90_path))
+def compute_scoring_from_df(df_base, position_key, min_minutes, min_matches, selected_teams):
+    df = df_base.copy()
 
-    # filtro equipos (antes del scoring)
     if selected_teams:
         if "teams" in df.columns:
             df = df[df["teams"].astype(str).isin([str(t) for t in selected_teams])].copy()
-
-    # temp csv para reutilizar scripts run_*
-    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
-        tmp_path = Path(tmp.name)
-    df.to_csv(tmp_path, index=False, encoding="utf-8")
-
-    out_tmp = (Path("outputs") / "_tmp_scoring.csv")
-    out_tmp.parent.mkdir(parents=True, exist_ok=True)
+        elif "team_name" in df.columns:
+            df = df[df["team_name"].astype(str).isin([str(t) for t in selected_teams])].copy()
 
     if position_key == "Golero":
         return run_goalkeeper_scoring(
-            per90_csv=tmp_path,
-            out_csv=out_tmp,
+            df=df,
             position_group="Golero",
             min_minutes=min_minutes,
             min_matches=min_matches,
             flag_q=0.75,
         )
 
-    if position_key == "Zaguero":
-        out = run_cb_scoring(
-            per90_csv=tmp_path,
-            out_csv=out_tmp,
-            position_group="Zaguero",
+    if position_key == "Volante":
+        return score_volante_df(
+            per90_df=df,
+            position_group="Volante",
             min_minutes=min_minutes,
             min_matches=min_matches,
             flag_q=0.75,
+            verbose=False,
         )
 
-    elif position_key == "Lateral":
-        out = run_position_scoring(
-            per90_csv=tmp_path,
-            out_csv=out_tmp,
+    if position_key == "Lateral":
+        return score_lateral_df(
+            per90_df=df,
             position_group="Lateral",
             min_minutes=min_minutes,
             min_matches=min_matches,
             flag_q=0.75,
             def_exec_w=0.60,
             def_obv_w=0.40,
+            verbose=False,
         )
 
-    elif position_key == "Volante":
-        out = run_volante_scoring(
-            per90_csv=tmp_path,
-            out_csv=out_tmp,
-            position_group="Volante",
-            min_minutes=min_minutes,
-            min_matches=min_matches,
-            flag_q=0.75,
-        )
-
-    elif position_key == "Interior/Mediapunta":
-        out = run_interior_scoring(
-            per90_csv=tmp_path,
-            out_csv=out_tmp,
+    if position_key == "Interior/Mediapunta":
+        return run_interior_scoring(
+            df=df,
             position_group="Interior/Mediapunta",
             min_minutes=min_minutes,
             min_matches=min_matches,
             flag_q=0.75,
         )
 
-    elif position_key == "Extremo":
-        out = run_extremo_scoring(
-            per90_csv=tmp_path,
-            out_csv=out_tmp,
+    if position_key == "Extremo":
+        return run_extremo_scoring(
+            df=df,
             position_group="Extremo",
             min_minutes=min_minutes,
             min_matches=min_matches,
             flag_q=0.75,
         )
 
-    elif position_key == "Delantero":
-        out = run_delantero_scoring(
-            per90_csv=tmp_path,
-            out_csv=out_tmp,
+    if position_key == "Delantero":
+        return run_delantero_scoring(
+            df=df,
             position_group="Delantero",
             min_minutes=min_minutes,
             min_matches=min_matches,
             flag_q=0.75,
         )
 
-    else:
-        raise ValueError(f"Posición no soportada: {position_key}")
+    if position_key == "Zaguero":
+        return run_cb_scoring(
+            df=df,
+            position_group="Zaguero",
+            min_minutes=min_minutes,
+            min_matches=min_matches,
+            flag_q=0.75,
+        )
 
-    return out
+    raise ValueError(f"Posición no soportada: {position_key}")
+
 
 def pick_category_score_cols(df: pd.DataFrame) -> list[str]:
     """
@@ -303,8 +285,8 @@ cat_w = filters.get("cat_weights", {})
 # =========================================
 with st.spinner("Calculando scoring..."):
     try:
-        scores = compute_scoring(
-            per90_path=str(PER90_PATH),
+        scores = compute_scoring_from_df(
+            df_base=df_base,
             position_key=pos,
             min_minutes=min_minutes,
             min_matches=min_matches,
@@ -344,17 +326,14 @@ else:
     st.stop()
 
 # --- detectar scores por categoría (usar df original 'scores' para encontrarlos mejor)
-cat_cols_raw = pick_category_score_cols(scores)
+macro = get_macro_config(pos)   # [(Score_x, Label), ...]
+cat_cols_raw = [c for c, _ in macro if c in scores.columns]
 
 # construir df con columnas de categoría ya normalizadas
 cat_df = scores[cat_cols_raw].copy() if cat_cols_raw else pd.DataFrame(index=scores.index)
 
 # nombres lindos
-pretty_map = {}
-for c in cat_cols_raw:
-    name = c.replace("score_", "").replace("Score_", "")
-    name = name.replace("_", " ").strip().title()
-    pretty_map[c] = name
+pretty_map = {c: label for c, label in macro if c in cat_cols_raw}
 
 cat_df = cat_df.rename(columns=pretty_map)
 
@@ -432,7 +411,26 @@ st.subheader(f"🏆 Top 10 – {pos}{team_label}")
 st.markdown(top10.to_html(index=False, classes="mty-table"), unsafe_allow_html=True)
 
 with st.expander("Ver ranking completo"):
-    st.dataframe(scores_disp.sort_values("Score", ascending=False), use_container_width=True)
+
+    # 1) Elegimos SOLO columnas display (las que ya tenés armadas)
+    cols_full = [c for c in cols_show if c in scores_disp.columns]
+    df_disp = scores_disp[cols_full].copy()
+
+    # 2) Ordenar (antes de renombrar)
+    sort_col = "Score_Ajustado" if "Score_Ajustado" in df_disp.columns else "Score"
+    if sort_col in df_disp.columns:
+        df_disp = df_disp.sort_values(sort_col, ascending=False)
+
+    # 3) Renombrar SOLO columnas base (NO scores por rol, porque ya están “pretty”)
+    base_labels = COL_LABELS_ES.copy()
+
+    # Evitar renombrar Score_Overall -> Score si no existe (acá no debería estar)
+    base_labels.pop("Score_Overall", None)
+
+    df_disp = df_disp.rename(columns=base_labels)
+
+    st.dataframe(df_disp, use_container_width=True)
+
 
 # =========================================
 # VIZ: Boxplot por categoría + highlight jugador

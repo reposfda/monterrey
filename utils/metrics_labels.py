@@ -95,3 +95,19 @@ METRICS_ES = {
     ""
 
 }
+
+COL_LABELS_ES = {
+    "player_id": "ID",
+    "player_name": "Jugador",
+    "team_name": "Equipo",
+    "teams": "Equipo",
+    "matches": "PJ",
+    "minutes": "Minutos",
+    "primary_position": "Posición (SB)",
+    "primary_position_share": "% Posición",
+
+    # Scores
+    "Score_Overall": "Score",
+    "Score_Ajustado": "Score Ajustado",
+    "Flags": "Perfil",
+}
