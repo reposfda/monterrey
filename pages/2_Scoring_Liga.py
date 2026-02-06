@@ -163,7 +163,7 @@ def compute_scoring(
 
     if position_key == "Golero":
         return run_goalkeeper_scoring(
-            complete_csv=tmp_path,
+            per90_csv=tmp_path,
             out_csv=out_tmp,
             position_group="Golero",
             min_minutes=min_minutes,

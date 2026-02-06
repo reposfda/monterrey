@@ -116,7 +116,7 @@ def read_csv_robust(path: Path) -> pd.DataFrame:
 
 # ============= SCORING PRINCIPAL =============
 def run_goalkeeper_scoring(
-    complete_csv: Path,
+    per90_csv: Path,   # antes: complete_csv
     out_csv: Path,
     position_group: str = "Golero",
     min_minutes: int = 450,
@@ -143,8 +143,8 @@ def run_goalkeeper_scoring(
     print("="*70)
     
     # --- Cargar datos ---
-    print(f"\n📂 Cargando: {complete_csv}")
-    df = read_csv_robust(complete_csv)
+    print(f"\n📂 Cargando: {per90_csv}")
+    df = read_csv_robust(per90_csv)
     print(f"✓ Total jugadores en archivo: {len(df):,}")
     
     # --- Filtrar por posición ---
@@ -376,15 +376,14 @@ if __name__ == "__main__":
     from pathlib import Path
     
     # Rutas
-    complete_csv = Path("outputs/all_players_complete_2025_2026.csv")
+    per90_csv = Path("outputs/all_players_complete_2025_2026.csv")
     out_csv = Path("outputs/golero_scores_2025_2026.csv")
-    
-    # Ejecutar scoring para goleros
+
     scores = run_goalkeeper_scoring(
-        complete_csv=complete_csv,
+        per90_csv=per90_csv,
         out_csv=out_csv,
         position_group="Golero",
         min_minutes=450,
         min_matches=3,
-        flag_q=0.75,  # Top 25%
+        flag_q=0.75,
     )
