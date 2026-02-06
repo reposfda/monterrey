@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
+# core/event_processor.py
+
+import sys
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import json, ast
 import sys
 from datetime import datetime
+
+# Agregar directorio raíz al Python path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Importar desde config centralizado
 from config import (
@@ -16,7 +23,7 @@ from config import (
 )
 
 # Importar funciones de turnover
-from turnover_calculator import compute_player_turnovers, classify_turnover
+from turnover_calculator import compute_player_turnovers
 
 # Importar módulo de análisis de carriles OBV
 try:
