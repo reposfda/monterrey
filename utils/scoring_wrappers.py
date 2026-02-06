@@ -11,7 +11,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-# ✅ Imports corregidos - TODAS las funciones necesarias
+# Imports corregidos - TODAS las funciones necesarias
 from scoring.goalkeeper import run_goalkeeper_scoring
 from scoring.defenders import run_cb_scoring, score_lateral_df  # ← Agregado score_lateral_df
 from scoring.midfielders import run_interior_scoring, run_volante_scoring  # ← Agregado run_volante_scoring
@@ -125,7 +125,7 @@ def compute_scoring_from_df(
         )
     
     if position_key == "Lateral":
-        # ✅ Usar score_lateral_df (existe en scoring/defenders.py)
+        # Usar score_lateral_df (existe en scoring/defenders.py)
         return score_lateral_df(
             per90_df=df,
             position_group="Lateral",
@@ -135,7 +135,7 @@ def compute_scoring_from_df(
         )
     
     if position_key == "Volante":
-        # ✅ Ahora está importado correctamente
+        # Ahora está importado correctamente
         return run_volante_scoring(
             df=df,
             position_group="Volante",
