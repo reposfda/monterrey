@@ -1,146 +1,78 @@
 # pages/2_Scoring_Liga.py
 # -*- coding: utf-8 -*-
-from __future__ import annotations
+"""
+Página de Scoring Liga - Ranking de jugadores por posición.
 
-from pathlib import Path
+Permite filtrar por:
+- Posición
+- Minutos jugados
+- Partidos jugados
+- Equipos
+
+Muestra:
+- Top 10 jugadores
+- Ranking completo
+- Gráficos de distribución por categoría
+"""
+from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 
+# ✅ Importar desde config centralizado
+from config import (
+    PER90_CSV,
+    LOGO_PATH,
+    Colors,
+    Defaults,
+    apply_global_styles
+)
+
 from utils.loaders import load_per90
 from utils.filters import sidebar_filters
 from utils.metrics_labels import COL_LABELS_ES
 from utils.role_config import get_macro_config
-
 from utils.scoring_wrappers import compute_scoring_from_df
 
-# =========================================
-# CONFIG + ESTILO
-# =========================================
-st.set_page_config(page_title="Scoring Liga – Monterrey", layout="wide")
+# =============================================================================
+# CONFIGURACIÓN DE PÁGINA
+# =============================================================================
+st.set_page_config(
+    page_title="Scoring Liga – Monterrey",
+    layout="wide",
+    page_icon="📊"
+)
 
-PRIMARY_BG = "#0B1F38"
-SECONDARY_BG = "#091325"
-ACCENT = "#6CA0DC"
-TEXT = "#FFFFFF"
-GOLD = "#c49308"
+# ✅ Aplicar estilos globales (reemplaza TODO el CSS duplicado)
+apply_global_styles()
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-LOGO_PATH = BASE_DIR / "assets" / "monterrey_logo.png"
-
-PER90_PATH = BASE_DIR / "outputs" / "all_players_complete_2025_2026.csv"
-if not PER90_PATH.exists():
-    st.error(f"No encuentro el archivo base per90 en: {PER90_PATH}")
+# Verificar que existe el archivo base
+if not PER90_CSV.exists():
+    st.error(f"❌ No se encontró el archivo base per90 en: {PER90_CSV}")
+    st.info(
+        "Por favor, ejecutá primero:\n\n"
+        "```bash\n"
+        "python calculate_main_csv.py\n"
+        "```"
+    )
     st.stop()
 
-st.markdown(
-    f"""
-    <style>
-        .stApp {{ background-color: {PRIMARY_BG}; }}
-        .block-container {{ padding-top: 0rem !important; }}
-
-        header[data-testid="stHeader"] {{ background-color: transparent; }}
-        header[data-testid="stHeader"] > div {{
-            background-color: {PRIMARY_BG};
-            box-shadow: none;
-        }}
-        header[data-testid="stHeader"] * {{ color: #FFFFFF !important; }}
-        header[data-testid="stHeader"] svg,
-        header[data-testid="stHeader"] path {{ fill: #FFFFFF !important; }}
-
-        [data-testid="stSidebar"] > div:first-child {{
-            background-color: {SECONDARY_BG};
-        }}
-
-        h1, h2, h3, h4, h5, h6, p, label {{
-            color: {TEXT} !important;
-        }}
-
-        div[data-baseweb="slider"] span {{
-            color: {GOLD} !important;
-            font-weight: 700 !important;
-        }}
-
-        table.mty-table {{
-            border-collapse: separate;
-            border-spacing: 0;
-            width: 100%;
-            background-color: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            font-size: 0.90rem;
-        }}
-        table.mty-table thead {{ background-color: {PRIMARY_BG}; }}
-        table.mty-table thead th {{
-            color: #ffffff !important;
-            padding: 0.55rem 0.75rem;
-        }}
-        table.mty-table thead th:first-child {{
-            text-align: left !important;
-            padding-left: 12px !important;
-        }}
-        table.mty-table thead th:not(:first-child) {{
-            text-align: center !important;
-        }}
-
-        table.mty-table tbody td {{
-            color: #1f2933 !important;
-            padding: 0.55rem 0.75rem;
-        }}
-        table.mty-table tbody td:first-child {{
-            text-align: left !important;
-            padding-left: 12px !important;
-        }}
-        table.mty-table tbody td:not(:first-child) {{
-            text-align: center !important;
-        }}
-
-        table.mty-table tbody tr:nth-child(even) {{ background-color: #f4f6fb; }}
-        table.mty-table tbody tr:hover {{ background-color: #e8f0ff; }}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """
-    <style>
-    div.stSlider > div[data-baseweb="slider"] > div[data-testid="stTickBar"] > div {
-        background: transparent !important;
-    }
-    div.stSlider > div[data-baseweb="slider"] > div > div {
-        background: #c49308 !important;
-        border-radius: 8px !important;
-        height: 6px !important;
-    }
-    div.stSlider > div[data-baseweb="slider"] > div > div > div[role="slider"] {
-        background-color: #c49308 !important;
-        box-shadow: 0 0 0 0.2rem rgba(196,147,8,0.3) !important;
-        border: 2px solid #ffffff !important;
-    }
-    div.stSlider > div[data-baseweb="slider"] > div > div > div > div {
-        color: #c49308 !important;
-        font-weight: 700 !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# =========================================
+# =============================================================================
 # HEADER
-# =========================================
-c1, c2 = st.columns([1, 5])
-with c1:
+# =============================================================================
+col_logo, col_title = st.columns([1, 5])
+
+with col_logo:
     if LOGO_PATH.exists():
         st.image(str(LOGO_PATH), width=90)
-with c2:
+
+with col_title:
     st.markdown(
         f"""
         <h1 style="margin-bottom:0;">Scoring Liga – Ranking</h1>
-        <p style="color:{ACCENT}; font-size:0.95rem; margin-top:0.25rem;">
+        <p style="color:{Colors.ACCENT}; font-size:0.95rem; margin-top:0.25rem;">
             Top 10 por posición (filtros: minutos, equipos, posición)
         </p>
         """,
@@ -149,10 +81,10 @@ with c2:
 
 st.markdown("---")
 
-# =========================================
+# =============================================================================
 # FILTERS
-# =========================================
-df_base = load_per90(PER90_PATH)
+# =============================================================================
+df_base = load_per90(PER90_CSV)
 
 filters = sidebar_filters(
     df_base,
@@ -164,12 +96,12 @@ filters = sidebar_filters(
 pos = filters["position"]
 min_minutes = int(filters["min_minutes"])
 selected_teams = filters.get("teams", [])
-min_matches = 3
+min_matches = Defaults.MIN_MATCHES  # ✅ Ahora viene de config
 cat_w = filters.get("cat_weights", {})
 
-# =========================================
-# MAIN
-# =========================================
+# =============================================================================
+# MAIN - CÁLCULO DE SCORING
+# =============================================================================
 with st.spinner("Calculando scoring..."):
     try:
         scores = compute_scoring_from_df(
@@ -184,7 +116,11 @@ with st.spinner("Calculando scoring..."):
         st.info("Probá bajar Minutos mínimos, cambiar Equipo o elegir otra Posición.")
         st.stop()
 
-# --- renombres base (sin crear duplicados)
+# =============================================================================
+# PREPARAR DATOS PARA DISPLAY
+# =============================================================================
+
+# Renombres base (sin crear duplicados)
 rename_map = {
     "player_name": "Jugador",
     "team_name": "Equipo",
@@ -195,10 +131,12 @@ rename_map = {
 }
 scores_disp = scores.rename(columns=rename_map).copy()
 
-# --- asegurar score overall en una columna única
-# (algunos scripts devuelven Score_Overall, otros score_total, etc.)
-score_overall_candidates = [c for c in scores_disp.columns if c.lower() in ["score_overall", "score_total", "overall_score", "score"]]
-# prioridad: Score_Overall si existe
+# Asegurar score overall en una columna única
+score_overall_candidates = [
+    c for c in scores_disp.columns 
+    if c.lower() in ["score_overall", "score_total", "overall_score", "score"]
+]
+
 if "Score_Overall" in scores.columns:
     scores_disp["Score"] = pd.to_numeric(scores["Score_Overall"], errors="coerce")
 elif "score_overall" in scores.columns:
@@ -206,132 +144,138 @@ elif "score_overall" in scores.columns:
 elif "score_total" in scores.columns:
     scores_disp["Score"] = pd.to_numeric(scores["score_total"], errors="coerce")
 elif "Score" in scores_disp.columns:
-    # si ya existe Score, lo fuerza a numérico (y si estaba duplicado lo evitamos porque lo creamos nosotros arriba)
     scores_disp["Score"] = pd.to_numeric(scores_disp["Score"], errors="coerce")
 else:
     st.error("No encuentro columna de score overall (Score_Overall / score_overall / score_total / Score).")
     st.stop()
 
-# --- detectar scores por categoría (usar df original 'scores' para encontrarlos mejor)
-macro = get_macro_config(pos)   # [(Score_x, Label), ...]
+# Detectar scores por categoría
+macro = get_macro_config(pos)  # [(Score_x, Label), ...]
 cat_cols_raw = [c for c, _ in macro if c in scores.columns]
 
-# construir df con columnas de categoría ya normalizadas
+# Construir df con columnas de categoría ya normalizadas
 cat_df = scores[cat_cols_raw].copy() if cat_cols_raw else pd.DataFrame(index=scores.index)
 
-# nombres lindos
+# Nombres lindos
 pretty_map = {c: label for c, label in macro if c in cat_cols_raw}
-
 cat_df = cat_df.rename(columns=pretty_map)
 
-# unir al display (por índice)
+# Unir al display (por índice)
 scores_disp = pd.concat([scores_disp, cat_df], axis=1)
 
-# --- columnas a mostrar
+# Columnas a mostrar
 cat_cols_pretty = list(cat_df.columns)
-base_cols = [c for c in ["Jugador", "Equipo", "Minutos", "PJ", "Score", "Perfil"] if c in scores_disp.columns]
+base_cols = [
+    c for c in ["Jugador", "Equipo", "Minutos", "PJ", "Score", "Perfil"] 
+    if c in scores_disp.columns
+]
 cols_show = base_cols + cat_cols_pretty
 
-# =========================================
-# APPLY CAT WEIGHTS (what-if) -> Score_Ajustado
-# =========================================
-# cat_w viene de sidebar_filters: keys tipo "Score_Progresion" etc.
-# Nosotros tenemos en pantalla columnas "pretty" (ej: "Progresion", "Impacto Ofensivo"...)
-# Armamos un mapping para poder aplicar los pesos.
-def _to_pretty_key(score_key: str) -> str:
-    # "Score_AccionDefensiva" -> "Acciondefensiva" (luego title del pretty_map puede variar)
-    k = score_key.replace("Score_", "").replace("score_", "").replace("_", " ").strip().title()
-    return k
+# =============================================================================
+# APLICAR PESOS DE CATEGORÍAS (WHAT-IF) -> Score_Ajustado
+# =============================================================================
 
-# 1) construir pares (pretty_col, weight) que existan en scores_disp
+# --- mapping exacto: ScoreKey -> Label (el mismo que usaste para renombrar)
+scorekey_to_label = {k: label for k, label in macro}
+
 pairs = []
-for k, w in (cat_w or {}).items():
-    pretty_k = _to_pretty_key(k)
-    if pretty_k in scores_disp.columns:
-        pairs.append((pretty_k, float(w)))
+for score_key, w in (cat_w or {}).items():
+    label = scorekey_to_label.get(score_key)
 
-# 2) si tenemos 4 pesos válidos, calculamos Score_Ajustado (0-100)
+    # Si por algún motivo no está en macro, fallback suave
+    if label is None:
+        continue
+
+    if label in scores_disp.columns:
+        pairs.append((label, float(w)))
+
+# Si tenemos 2+ pesos válidos, calculamos Score_Ajustado
 if len(pairs) >= 2:
-    # normalizar por si acaso
+    # Normalizar pesos
     s = sum(w for _, w in pairs)
     if s > 0:
         pairs = [(c, w / s) for c, w in pairs]
-
-    # weighted sum
+    
+    # Weighted sum
     score_adj = 0
     for c, w in pairs:
         score_adj = score_adj + (pd.to_numeric(scores_disp[c], errors="coerce") * w)
-
+    
     scores_disp["Score_Ajustado"] = score_adj
 else:
     scores_disp["Score_Ajustado"] = pd.to_numeric(scores_disp["Score"], errors="coerce")
 
+# Agregar Score_Ajustado al display
+cols_show = base_cols + (
+    ["Score_Ajustado"] if "Score_Ajustado" in scores_disp.columns else []
+) + cat_cols_pretty
 
-# agregar Score_Ajustado al display
-cols_show = base_cols + (["Score_Ajustado"] if "Score_Ajustado" in scores_disp.columns else []) + cat_cols_pretty
+# =============================================================================
+# TOP 10
+# =============================================================================
 
 top10 = (
     scores_disp.sort_values("Score_Ajustado", ascending=False)[cols_show]
-    .head(10)
+    .head(Defaults.TOP_N_RANKING)  # ✅ Ahora viene de config
     .reset_index(drop=True)
 )
 
-# --- formateo
+# Formateo
 if "Minutos" in top10.columns:
     top10["Minutos"] = pd.to_numeric(top10["Minutos"], errors="coerce").fillna(0).astype(int)
 if "PJ" in top10.columns:
     top10["PJ"] = pd.to_numeric(top10["PJ"], errors="coerce").fillna(0).astype(int)
 if "Score" in top10.columns:
-    top10["Score"] = pd.to_numeric(top10["Score"], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.2f}")
+    top10["Score"] = pd.to_numeric(top10["Score"], errors="coerce").map(
+        lambda x: "" if pd.isna(x) else f"{x:.2f}"
+    )
 if "Score_Ajustado" in top10.columns:
-    top10["Score_Ajustado"] = pd.to_numeric(top10["Score_Ajustado"], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.2f}")
-
+    top10["Score_Ajustado"] = pd.to_numeric(top10["Score_Ajustado"], errors="coerce").map(
+        lambda x: "" if pd.isna(x) else f"{x:.2f}"
+    )
 
 for c in cat_cols_pretty:
-    top10[c] = pd.to_numeric(top10[c], errors="coerce").map(lambda x: "" if pd.isna(x) else f"{x:.2f}")
+    top10[c] = pd.to_numeric(top10[c], errors="coerce").map(
+        lambda x: "" if pd.isna(x) else f"{x:.2f}"
+    )
 
+# Label de equipos
 team_label = ""
 if selected_teams:
     team_label = f" ({', '.join(selected_teams[:2])}{'...' if len(selected_teams) > 2 else ''})"
 
-st.subheader(f"🏆 Top 10 – {pos}{team_label}")
+st.subheader(f"🏆 Top {Defaults.TOP_N_RANKING} – {pos}{team_label}")
 st.markdown(top10.to_html(index=False, classes="mty-table"), unsafe_allow_html=True)
 
-with st.expander("Ver ranking completo"):
+# =============================================================================
+# RANKING COMPLETO
+# =============================================================================
 
-    # 1) Elegimos SOLO columnas display (las que ya tenés armadas)
+with st.expander("Ver ranking completo"):
+    # Elegir SOLO columnas display
     cols_full = [c for c in cols_show if c in scores_disp.columns]
     df_disp = scores_disp[cols_full].copy()
-
-    # 2) Ordenar (antes de renombrar)
+    
+    # Ordenar
     sort_col = "Score_Ajustado" if "Score_Ajustado" in df_disp.columns else "Score"
     if sort_col in df_disp.columns:
         df_disp = df_disp.sort_values(sort_col, ascending=False)
-
-    # 3) Renombrar SOLO columnas base (NO scores por rol, porque ya están “pretty”)
+    
+    # Renombrar SOLO columnas base (NO scores por rol, ya están "pretty")
     base_labels = COL_LABELS_ES.copy()
-
-    # Evitar renombrar Score_Overall -> Score si no existe (acá no debería estar)
-    base_labels.pop("Score_Overall", None)
-
+    base_labels.pop("Score_Overall", None)  # Evitar conflictos
     df_disp = df_disp.rename(columns=base_labels)
-
+    
     st.dataframe(df_disp, use_container_width=True)
 
+# =============================================================================
+# VISUALIZACIÓN: BOXPLOT POR CATEGORÍA + HIGHLIGHT JUGADOR
+# =============================================================================
 
-# =========================================
-# VIZ: Boxplot por categoría + highlight jugador
-# =========================================
 st.markdown("---")
 st.subheader("Distribución por categoría")
 
-# --- Fallback paleta
-PRIMARY_BG = globals().get("PRIMARY_BG", "#0B1F38")
-ACCENT     = globals().get("ACCENT", "#6CA0DC")
-GOLD       = globals().get("GOLD", "#807C42")
-TEXT       = globals().get("TEXT", "#E8EEF6")
-
-# --- Base DF (dedupe columnas + índice seguro)
+# Base DF (dedupe columnas + índice seguro)
 plot_df = scores_disp.copy()
 plot_df = plot_df.reset_index(drop=True)
 plot_df.index = pd.RangeIndex(len(plot_df))
@@ -344,39 +288,43 @@ plot_df.columns = (
       .str.strip()
 )
 
-# --- Categorías a graficar: usa tu config por posición si existe; si no, intenta tomar 4 Score_*
-# 1) si ya tenés cat_cols_pretty (4 categorías por posición), usalo:
+# Categorías a graficar
 cats = [c for c in cat_cols_pretty if c in plot_df.columns]
 
-# Si tenés más de 4 (ej. por bug de scoring), preferí las que usa el role_config actual:
-# si en tu página ya estás armando `cat_cols_pretty` para esa posición, normalmente ya viene bien.
-# En caso de exceso, recortamos a 4 por lo que esté primero.
+# Si tenés más de 4, recortar a 4
 if len(cats) > 4:
     cats = cats[:4]
 
 if len(cats) < 2:
     st.warning("No encontré categorías válidas para graficar en este DF.")
 else:
-    # --- Convertir a numérico
+    # Convertir a numérico
     for c in cats:
         plot_df[c] = pd.to_numeric(plot_df[c], errors="coerce")
-
-    # Tirar NaNs en todas las cats
+    
+    # Tirar NaNs
     plot_df = plot_df.dropna(subset=cats).copy()
+    
     if plot_df.empty:
         st.warning("No hay filas con valores válidos en las categorías seleccionadas.")
     else:
-        # --- Selector highlight robusto
+        # Selector highlight robusto
         if "player_id" in plot_df.columns:
             plot_df["hl_id"] = plot_df["player_id"].astype(str)
         else:
-            plot_df["hl_id"] = (plot_df["Jugador"].astype(str) + "||" + plot_df["Equipo"].astype(str))
-
-        plot_df["hl_label"] = plot_df["Jugador"].astype(str) + " — " + plot_df["Equipo"].astype(str)
-
-        uniq = plot_df.drop_duplicates(subset=["hl_id"], keep="first")[["hl_id", "hl_label"]].copy()
+            plot_df["hl_id"] = (
+                plot_df["Jugador"].astype(str) + "||" + plot_df["Equipo"].astype(str)
+            )
+        
+        plot_df["hl_label"] = (
+            plot_df["Jugador"].astype(str) + " — " + plot_df["Equipo"].astype(str)
+        )
+        
+        uniq = plot_df.drop_duplicates(subset=["hl_id"], keep="first")[
+            ["hl_id", "hl_label"]
+        ].copy()
         label_map = dict(zip(uniq["hl_id"], uniq["hl_label"]))
-
+        
         selected_id = st.selectbox(
             "Highlight jugador:",
             options=["(ninguno)"] + uniq["hl_id"].tolist(),
@@ -384,23 +332,25 @@ else:
             index=0,
             key=f"box_hl_{pos}",
         )
-
-        # --- Reestructurar a formato long
+        
+        # Reestructurar a formato long
         long = plot_df.melt(
             id_vars=["Jugador", "Equipo", "hl_id"],
             value_vars=cats,
             var_name="Categoria",
             value_name="Valor"
         )
-
-        # --- Figura
+        
+        # =================================================================
+        # FIGURA
+        # =================================================================
+        
         fig = go.Figure()
-
-        # Boxplot por categoría (whiskers = IQR por defecto)
-        # points='all' muestra puntos, jitter para ver densidad
+        
+        # Boxplot por categoría
         for cat in cats:
             d = long.loc[long["Categoria"] == cat, "Valor"].astype(float).to_numpy()
-
+            
             fig.add_trace(go.Box(
                 y=d,
                 name=cat,
@@ -408,22 +358,17 @@ else:
                 jitter=0.35,
                 pointpos=0,
                 marker=dict(size=5, opacity=0.22, color="rgba(232,238,246,0.55)"),
-                line=dict(color="rgba(108,160,220,0.55)", width=1),   # líneas finas
-                fillcolor="rgba(108,160,220,0.08)",                   # caja más liviana
+                line=dict(color="rgba(108,160,220,0.55)", width=1),
+                fillcolor="rgba(108,160,220,0.08)",
                 whiskerwidth=0.35,
-                width=0.30,                                           # caja más angosta
+                width=0.30,
                 showlegend=False,
-                # median line visible por defecto (no hace falta leyenda)
             ))
-
-        # Highlight overlay (un punto por categoría + línea horizontal)
+        
+        # Highlight overlay
         if selected_id != "(ninguno)":
             hlong = long[long["hl_id"].astype(str) == str(selected_id)].copy()
-
-        # Highlight overlay (solo scores, sin nombre)
-        if selected_id != "(ninguno)":
-            hlong = long[long["hl_id"].astype(str) == str(selected_id)].copy()
-
+            
             if not hlong.empty:
                 fig.add_trace(go.Scatter(
                     x=hlong["Categoria"],
@@ -431,10 +376,10 @@ else:
                     mode="markers+text",
                     text=[f"{v:.1f}" if pd.notna(v) else "" for v in hlong["Valor"]],
                     textposition="top center",
-                    textfont=dict(color=TEXT, size=12),
+                    textfont=dict(color=Colors.TEXT, size=12),  # ✅ Usa Colors
                     marker=dict(
                         size=10,
-                        color=GOLD,
+                        color=Colors.GOLD,  # ✅ Usa Colors
                         opacity=0.95,
                         line=dict(width=0),
                         symbol="circle"
@@ -442,14 +387,14 @@ else:
                     hovertemplate="<b>%{x}</b><br>Valor: %{y:.1f}<extra></extra>",
                     showlegend=False
                 ))
-
+        
         # Layout
         fig.update_layout(
             height=560,
-            paper_bgcolor=PRIMARY_BG,
-            plot_bgcolor=PRIMARY_BG,
+            paper_bgcolor=Colors.PRIMARY_BG,  # ✅ Usa Colors
+            plot_bgcolor=Colors.PRIMARY_BG,   # ✅ Usa Colors
             margin=dict(l=18, r=18, t=10, b=10),
-            font=dict(color=TEXT, family="Inter, Segoe UI, Arial"),
+            font=dict(color=Colors.TEXT, family="Inter, Segoe UI, Arial"),  # ✅ Usa Colors
             xaxis=dict(
                 title="",
                 tickfont=dict(color="rgba(232,238,246,0.75)"),
@@ -463,9 +408,11 @@ else:
                 zeroline=False
             ),
         )
-
+        
         fig.update_yaxes(range=[0, 100])
-
+        
         st.plotly_chart(fig, use_container_width=True)
-        st.caption("Boxplot: línea = mediana · caja = IQR (P25–P75) · whiskers = 1.5×IQR · puntos = jugadores")
-
+        st.caption(
+            "Boxplot: línea = mediana · caja = IQR (P25–P75) · "
+            "whiskers = 1.5×IQR · puntos = jugadores"
+        )

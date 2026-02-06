@@ -89,10 +89,32 @@ METRICS_ES = {
 
     # --- Profundidad --- 
     "n_events_third_attacking_pass_cross_openplay_per90": "Centros de juego abierto en último tercio c/90",
-    "n_events_third_attacking_pass_per90": "Pases en último tercio c/90"
+    "n_events_third_attacking_pass_per90": "Pases en último tercio c/90",
 
-    # --- Box to box --- 
-    ""
+    # --- Duelos --- 
+    "n_events_third_defensive_duel_per90": "Duelos defensivos en tercio defensivo c/90",
+    "n_events_third_middle_duel_per90": "Duelos en tercio medio c/90",
+    "n_events_third_attacking_duel_per90": "Duelos ofensivos en tercio ofensivo c/90",
+
+    # --- Golero (GK) ---
+    "gk_goals_prevented_per90": "Goles prevenidos c/90",
+    "gk_save_pct": "% atajadas",
+
+    "gk_errors_leading_to_shot_per90": "Errores que terminan en remate c/90",
+    "gk_errors_leading_to_goal_per90": "Errores que terminan en gol c/90",
+
+    "gk_claims_per90": "Capturas/claims c/90",
+    "gk_shots_open_play_in_box_against_per90": "Remates recibidos en el área (juego abierto) c/90",
+
+    "gk_pass_obv_per90": "OBV de pases (GK) c/90",
+    "gk_long_ball_pct": "% pase largo",
+
+    "gk_pressured_passes_def_third_per90": "Pases bajo presión en 1/3 defensivo c/90",
+    "gk_pressured_passes_def_third_completion_pct": "% acierto pases bajo presión (1/3 defensivo)",
+
+    "gk_actions_outside_box_per90": "Acciones fuera del área c/90",
+    "gk_aggressive_distance_avg": "Distancia agresiva promedio",
+
 
 }
 

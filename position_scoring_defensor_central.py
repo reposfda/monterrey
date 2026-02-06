@@ -116,8 +116,8 @@ def run_cb_scoring(
     out_csv: Path | None = None,
     df: pd.DataFrame | None = None,
     position_group: str = "Zaguero",
-    min_minutes: int = 600,
-    min_matches: int = 5,
+    min_minutes: int = 450,
+    min_matches: int = 3,
     flag_q: float = 0.75,
 ) -> pd.DataFrame:
 

@@ -206,10 +206,10 @@ def run_goalkeeper_scoring(
 
     def tags(r):
         t = []
-        if r.get("Flag_Effectiveness", False): t.append("Shot Stopper")
+        if r.get("Flag_Effectiveness", False): t.append("Atajador")
         if r.get("Flag_Area_Domination", False): t.append("Dominante")
-        if r.get("Flag_Foot_Play", False): t.append("Con Pies")
-        if r.get("Flag_Outside_Box", False): t.append("Sweeper")
+        if r.get("Flag_Foot_Play", False): t.append("Juego de Pies")
+        if r.get("Flag_Outside_Box", False): t.append("Líbero")
         return " | ".join(t) if t else "Balanceado"
 
     base["Flags"] = base.apply(tags, axis=1)

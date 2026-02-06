@@ -12,7 +12,7 @@ ROLE_MACRO = {
     "Golero": [
         ("Score_Effectiveness", "Efectividad"),
         ("Score_Area_Domination", "Dominio del área"),
-        ("Score_Foot_Play", "Juego con los pies"),
+        ("Score_Foot_Play", "Juego de pies"),         
         ("Score_Outside_Box", "Acciones fuera del área"),
     ],
 
