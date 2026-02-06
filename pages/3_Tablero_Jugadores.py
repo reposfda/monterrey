@@ -23,8 +23,8 @@ st.set_page_config(page_title="Tablero Jugadores – Monterrey", layout="wide")
 from utils.loaders import load_per90
 from utils.filters import sidebar_filters
 from utils.scoring import compute_scoring
-from utils.radar_mty_plot import plot_radar
-from utils.plot_lollipop_mty import plot_lollipop_mty
+from utils.radar_chart import plot_radar
+from utils.lollipop_chart import plot_lollipop_mty
 from utils.metrics_labels import METRICS_ES
 from utils.role_config import (
     get_macro_config,
@@ -340,7 +340,8 @@ with col_radar:
                 float(second_row[c]) if (c in scores.columns and pd.notna(second_row[c])) else float("nan")
                 for c in macro_cols
             ]
-            head_right_macro = second_name or ""
+            # ✅ evitar superposición: en el radar a la derecha mostramos SOLO nombre (sin equipo)
+            head_right_macro = (second_key[0] if second_key is not None else (second_name or "")).strip()
 
         low = [0] * len(macro_labels)
         high = [100] * len(macro_labels)
@@ -542,7 +543,7 @@ with col_lolli:
         xlim = (0.0, 100.0)
         value_fmt = "{:.0f}"
 
-        title_left = f"{player_key[0]} | {player_key[1]}"
+        title_left = f"{player_key[0]}\n{player_key[1]}"
         title_right = head_right
 
         fig_lolli = plot_lollipop_mty(

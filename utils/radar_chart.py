@@ -3,6 +3,8 @@ from typing import Sequence, List
 import matplotlib.pyplot as plt
 from mplsoccer import Radar
 from matplotlib import colors as mcolors
+from utils.text_wrapper import wrap_two_lines
+
 
 # === Paleta Monterrey ===
 MTY_BLUE  = "#0B1F38"
@@ -79,26 +81,75 @@ def _draw_param_labels(radar: Radar, ax, labels):
     )
 
 
+def _split_head_left(head_left: str) -> tuple[str, str]:
+    """
+    Espera algo tipo: "Jugador | Equipo"
+    Si no hay '|', devuelve todo como jugador y team vacío.
+    """
+    s = (head_left or "").strip()
+    if "|" not in s:
+        return s, ""
+    parts = [p.strip() for p in s.split("|")]
+    player = parts[0] if parts else s
+    team = " | ".join(parts[1:]).strip()
+    return player, team
+
+
 def _headers(ax, left: str = "", right: str = ""):
+    # --- LEFT: Jugador arriba, Equipo abajo (y dinámico según wrap)
     if left:
+        player, team = _split_head_left(left)
+
+        # wrap a máx 2 líneas
+        player_wrapped = wrap_two_lines(player, max_chars=30)
+        team_wrapped   = wrap_two_lines(team,   max_chars=34)
+
+        # cuántas líneas ocupa el jugador
+        player_lines = player_wrapped.count("\n") + 1
+
+        # posición dinámica del equipo:
+        # si el jugador ocupa 2 líneas, bajamos el equipo un poco más
+        y_player = 1.075
+        y_team = 1.015 - (player_lines - 1) * 0.030
+
+        # jugador
         ax.text(
-            0.0001, 1.05, left,
-            fontsize=8,
+            0.0001, y_player, player_wrapped,
+            fontsize=8.6,
             ha="left",
             va="center_baseline",
             transform=ax.transAxes,
             fontfamily="monospace",
             color=TXT_LIGHT,
+            clip_on=False,
         )
+
+        # equipo
+        if team_wrapped:
+            ax.text(
+                0.0001, y_team, team_wrapped,
+                fontsize=7.4,
+                ha="left",
+                va="center_baseline",
+                transform=ax.transAxes,
+                fontfamily="monospace",
+                color=TXT_RANGE,
+                clip_on=False,
+            )
+
+    # --- RIGHT: Promedio / Otro jugador (wrap fijo)
     if right:
+        right_wrapped = wrap_two_lines(right, max_chars=24)
+
         ax.text(
-            1.0, 1.05, right,
-            fontsize=8,
+            1.0, 1.075, right_wrapped,
+            fontsize=8.6,
             ha="right",
             va="center_baseline",
             transform=ax.transAxes,
             fontfamily="monospace",
             color=MTY_GOLD,
+            clip_on=False,
         )
 
 
@@ -160,5 +211,5 @@ def plot_radar(
     _draw_param_labels(radar, ax, metrics)
     _headers(ax, left=head_left, right=head_right)
 
-    fig.tight_layout(pad=0.3)
+    fig.tight_layout(pad=0.55)
     return fig
