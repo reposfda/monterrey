@@ -23,6 +23,7 @@ from utils.filters import sidebar_filters
 from utils.scoring import compute_scoring
 from utils.radar_mty_plot import plot_radar
 from utils.plot_lollipop_mty import plot_lollipop_mty
+from utils.metrics_labels import METRICS_ES
 from utils.role_config import (
     get_macro_config,
     get_detail_categories,
@@ -449,7 +450,8 @@ with col_lolli:
 
             for metric, w, inv in ml:
                 metric_lists.append((metric, w, inv))
-                metric_labels.append(f"{cat_out}: {metric}")  # ✅ ahora queda una sola categoría
+                label_es = METRICS_ES.get(metric, metric)
+                metric_labels.append(f"{cat_out}: {label_es}")
 
         if not metric_lists:
             st.warning("No pude leer listas detalladas desde role_config.")
