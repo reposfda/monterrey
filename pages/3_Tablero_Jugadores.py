@@ -10,6 +10,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 
+from utils.scoring_wrappers import compute_scoring_from_df
+
 # =========================================================
 # STREAMLIT CONFIG (DEBE SER LO PRIMERO)
 # =========================================================
@@ -23,6 +25,7 @@ from utils.filters import sidebar_filters
 from utils.scoring import compute_scoring
 from utils.radar_mty_plot import plot_radar
 from utils.plot_lollipop_mty import plot_lollipop_mty
+from utils.metrics_labels import METRICS_ES
 from utils.role_config import (
     get_macro_config,
     get_detail_categories,
@@ -219,8 +222,8 @@ min_matches = 3
 # SCORING (cohorte filtrada)
 # =========================================================
 with st.spinner("Calculando scoring…"):
-    scores = compute_scoring(
-        per90_path=str(PER90_PATH),
+    scores = compute_scoring_from_df(
+        df_base=df_base,
         position_key=pos,
         min_minutes=min_minutes,
         min_matches=min_matches,
@@ -449,7 +452,8 @@ with col_lolli:
 
             for metric, w, inv in ml:
                 metric_lists.append((metric, w, inv))
-                metric_labels.append(f"{cat_out}: {metric}")  # ✅ ahora queda una sola categoría
+                label_es = METRICS_ES.get(metric, metric)
+                metric_labels.append(f"{cat_out}: {label_es}")
 
         if not metric_lists:
             st.warning("No pude leer listas detalladas desde role_config.")

@@ -1,37 +1,34 @@
 # -*- coding: utf-8 -*-
 """
 Sistema de Scoring para Delanteros
-Versión simplificada - Solo usa CSV per90 (sin pool_builder, sin cálculo de métricas)
+Versión df-first - usa df o CSV per90 (sin pool_builder, sin cálculo de métricas)
 
 Categorías:
-1. Finalización / Killer - Eficiencia y capacidad de gol
-2. Presionante - Trabajo defensivo y presión alta
-3. Conector / Falso 9 - Juego asociativo y creación
-4. Disruptivo - Desequilibrio individual con regate/carry
+1. Finalización / Killer
+2. Presionante
+3. Conector / Falso 9
+4. Disruptivo
 
 Requiere:
-- all_players_per90_all.csv (output del script principal)
-- positions_config.py (módulo de configuración)
+- outputs/all_players_complete_2025_2026.csv (o df equivalente)
+- positions_config.py
 """
 
 from __future__ import annotations
 from pathlib import Path
 import numpy as np
 import pandas as pd
+
 from positions_config import normalize_group, sb_positions_for
+from utils.scoring_io import read_input  # <-- ajustá si tu ruta difiere
 
 
 # ============= HELPERS =============
 def safe_numeric(s: pd.Series) -> pd.Series:
-    """Convierte a numérico de forma segura"""
     return pd.to_numeric(s, errors="coerce")
 
 
 def pct_rank_0_100(s: pd.Series) -> pd.Series:
-    """
-    Calcula percentil de 0 a 100.
-    Valores más altos = mejor posición (mayor percentil).
-    """
     x = s.copy()
     m = x.notna()
     out = pd.Series(np.nan, index=x.index, dtype="float64")
@@ -40,21 +37,14 @@ def pct_rank_0_100(s: pd.Series) -> pd.Series:
 
 
 def wavg(df: pd.DataFrame, cols_weights):
-    """
-    Calcula promedio ponderado ignorando NaN.
-    
-    Args:
-        df: DataFrame con las columnas
-        cols_weights: Lista de tuplas (columna, peso)
-        
-    Returns:
-        Serie con el promedio ponderado
-    """
     cols = [c for c, _ in cols_weights if c in df.columns]
     if not cols:
         return pd.Series(np.nan, index=df.index)
 
     w = np.array([w for c, w in cols_weights if c in df.columns], dtype="float64")
+    if w.sum() <= 0:
+        return pd.Series(np.nan, index=df.index)
+
     w = w / w.sum()
     mat = np.vstack([df[c].to_numpy(dtype="float64") for c in cols]).T
     num = np.nansum(mat * w, axis=1)
@@ -63,154 +53,109 @@ def wavg(df: pd.DataFrame, cols_weights):
 
 
 def filter_by_position_group(df: pd.DataFrame, group: str) -> pd.DataFrame:
-    """
-    Filtra jugadores por grupo de posición usando primary_position.
-    
-    Args:
-        df: DataFrame con columna 'primary_position'
-        group: Nombre del grupo (ej: "Delantero", "Interior")
-        
-    Returns:
-        DataFrame filtrado
-    """
-    group = normalize_group(group)  # Valida el grupo
+    group = normalize_group(group)
     valid_positions = sb_positions_for(group)
-    
-    # Filtrar por primary_position
-    mask = df["primary_position"].isin(valid_positions)
-    
-    return df[mask].copy()
+    return df[df["primary_position"].isin(valid_positions)].copy()
 
 
 # ============= SCORING PRINCIPAL =============
 def run_delantero_scoring(
-    per90_csv: Path,
-    out_csv: Path,
+    per90_csv: Path | None = None,
+    out_csv: Path | None = None,
+    df: pd.DataFrame | None = None,
     position_group: str = "Delantero",
     min_minutes: int = 450,
     min_matches: int = 3,
     flag_q: float = 0.75,
-):
+) -> pd.DataFrame:
     """
-    Calcula scoring de delanteros usando solo el CSV per90.
-    
+    Calcula scoring de delanteros usando df o CSV per90.
+
     Args:
-        per90_csv: Path al archivo all_players_per90_all.csv
-        out_csv: Path de salida para scores
+        per90_csv: Path al CSV base (opcional si pasás df)
+        out_csv: Path salida (opcional)
+        df: DataFrame base (opcional si pasás per90_csv)
         position_group: Grupo de posición ("Delantero")
-        min_minutes: Minutos mínimos requeridos
-        min_matches: Partidos mínimos requeridos
-        flag_q: Cuantil para flags (0.75 = top 25%)
-        
+        min_minutes: minutos mínimos
+        min_matches: partidos mínimos
+        flag_q: cuantil para flags (0.75 = top 25%)
+
     Returns:
-        DataFrame con los scores calculados
+        DataFrame con scores
     """
-    
-    print("="*70)
+
+    print("=" * 70)
     print(f"SCORING DE {position_group.upper()}")
-    print("="*70)
-    
-    # --- Cargar datos ---
-    print(f"\n📂 Cargando: {per90_csv}")
-    per90 = pd.read_csv(per90_csv, low_memory=False, encoding='utf-8-sig')
-    print(f"✓ Total jugadores en archivo: {len(per90):,}")
-    
+    print("=" * 70)
+
+    base0 = read_input(per90_csv=per90_csv, df=df)
+    print(f"✓ Total jugadores en input: {len(base0):,}")
+
     # --- Filtrar por posición ---
     print(f"\n🔍 Filtrando por posición: {position_group}")
-    base = filter_by_position_group(per90, position_group)
+    base = filter_by_position_group(base0, position_group)
     print(f"✓ Jugadores en posición {position_group}: {len(base):,}")
-    
+
     # --- Filtrar por minutos y partidos ---
     print(f"\n⏱️  Aplicando filtros:")
     print(f"  - Minutos mínimos: {min_minutes}")
     print(f"  - Partidos mínimos: {min_matches}")
-    
-    base = base[base["total_minutes"] >= min_minutes].copy()
-    base = base[base["matches_played"] >= min_matches].copy()
-    
+
+    if "total_minutes" in base.columns:
+        base = base[base["total_minutes"] >= min_minutes].copy()
+    if "matches_played" in base.columns:
+        base = base[base["matches_played"] >= min_matches].copy()
+
     print(f"✓ Jugadores después de filtros: {len(base):,}")
-    
+
     if base.empty:
         raise ValueError(f"No hay jugadores de {position_group} que cumplan los filtros.")
-    
+
     # --- Renombrar columnas para compatibilidad ---
     base = base.rename(columns={
         "teams": "team_name",
         "matches_played": "matches",
         "total_minutes": "minutes",
     })
-    
+
     # =========================
     # DEFINICIÓN DE CATEGORÍAS
     # =========================
-    # Formato: (columna, peso, invertir?)
-    # invertir=True para métricas donde menor es mejor
-    
-    # --- 1. FINALIZACIÓN / KILLER (eficiencia y capacidad de gol) ---
     FINALIZACION = [
-        # Calidad de tiro
         ("xg_per_shot", 0.20, False),
         ("shot_statsbomb_xg_per90", 0.18, False),
         ("obv_total_net_type_shot_per90", 0.15, False),
-
-        # Gol (bajo peso)
         ("goals_per90", 0.05, False),
-
-        # Presencia en área
         ("touches_in_opp_box_per90", 0.15, False),
         ("touches_in_opp_box_pct", 0.10, False),
-
-        # Creación open play
         ("obv_total_net_play_pattern_regular_play_per90", 0.10, False),
-
-        # Volumen y eficiencia
         ("total_shots_per90", 0.04, False),
         ("shot_touch_pct", 0.03, False),
     ]
 
-    # --- 2. PRESIONANTE (trabajo defensivo y presión alta) ---
     PRESIONANTE = [
-        # Presión (PAdj)
         ("pressure_per90", 0.30, False),
         ("n_events_third_attacking_pressure_per90", 0.20, False),
         ("counterpress_per90", 0.15, False),
-        
-        # Recuperaciones en campo rival
         ("ball_recovery_offensive_per90", 0.15, False),
         ("n_events_third_attacking_ball_recovery_per90", 0.10, False),
-        
-        # OBV defensivo
         ("obv_total_net_type_interception_per90", 0.05, False),
         ("obv_total_net_type_ball_recovery_per90", 0.05, False),
     ]
 
-    # --- 3. CONECTOR / FALSO 9 (juego asociativo y creación) ---
     CONECTOR = [
-        # Volumen y precisión de pases
         ("complete_passes_per90", 0.25, False),
         ("pass_completion_rate", 0.15, False),
-        
-        # Pases progresivos
         ("pass_into_final_third_per90", 0.15, False),
         ("obv_total_net_type_pass_per90", 0.25, False),
-        
-        # Creación
         ("pass_shot_assist_per90", 0.15, False),
-        
-        # Penalización por pérdidas
         ("total_turnovers_per90", 0.05, True),
     ]
 
-    # --- 4. DISRUPTIVO (desequilibrio individual) ---
     DISRUPTIVO = [
-        # Dribble
         ("obv_total_net_type_dribble_per90", 0.40, False),
-        
-        # Carry
         ("obv_total_net_type_carry_per90", 0.35, False),
         ("carry_into_final_third_per90", 0.15, False),
-        
-        # Progresión individual
         ("pass_into_final_third_per90", 0.10, False),
     ]
 
@@ -221,72 +166,62 @@ def run_delantero_scoring(
         "Score_Disruptivo": DISRUPTIVO,
     }
 
-    # Pesos de categorías para Score_Overall
     CAT_W = {
-        "Score_Finalizacion": 0.40,   # Lo más importante en un delantero
-        "Score_Presionante": 0.10,    # Trabajo defensivo
-        "Score_Conector": 0.25,       # Juego asociativo
-        "Score_Disruptivo": 0.25,     # Desequilibrio individual
+        "Score_Finalizacion": 0.40,
+        "Score_Presionante": 0.10,
+        "Score_Conector": 0.25,
+        "Score_Disruptivo": 0.25,
     }
-    
+
     # =========================
-    # CALCULAR MÉTRICAS DERIVADAS SI ES NECESARIO
+    # MÉTRICAS DERIVADAS (solo si faltan)
     # =========================
-    print("\n🔧 Calculando métricas derivadas...")
-    
+    print("\n🔧 Calculando métricas derivadas (si aplica)...")
+
     # complete_passes_per90 (si no existe)
-    if "complete_passes_per90" not in base.columns and "complete_passes" in base.columns:
-        base["complete_passes"] = pd.to_numeric(base["complete_passes"], errors="coerce")
+    if "complete_passes_per90" not in base.columns and "complete_passes" in base.columns and "minutes" in base.columns:
+        base["complete_passes"] = safe_numeric(base["complete_passes"])
+        base["minutes"] = safe_numeric(base["minutes"])
         base["complete_passes_per90"] = np.where(
             base["minutes"] > 0,
             base["complete_passes"] / base["minutes"] * 90.0,
-            np.nan
+            np.nan,
         )
-        print("✓ complete_passes_per90 calculado")
-    
+        print("✓ complete_passes_per90 calculado desde complete_passes")
+
     # =========================
     # CÁLCULO DE SCORES
     # =========================
     print("\n🎯 Calculando scores...")
-    
-    # Convertir métricas a numérico
-    all_metrics = []
-    for cat, items in CATS.items():
-        for col, _, _ in items:
-            all_metrics.append(col)
-    
-    for col in set(all_metrics):
+
+    ALL_ITEMS = [item for items in CATS.values() for item in items]
+
+    # Convertir métricas a numérico (todas)
+    for col, _, _ in ALL_ITEMS:
         if col in base.columns:
             base[col] = safe_numeric(base[col])
-    
+
     # Percentiles por métrica
     missing_cols = []
-    for cat, items in CATS.items():
-        for col, _, inv in items:
-            if col not in base.columns:
-                missing_cols.append(col)
-                continue
-            
-            # Invertir si es necesario (menor valor = mejor)
-            x = -base[col] if inv else base[col]
-            base[f"pct__{col}"] = pct_rank_0_100(x)
-    
+    for col, _, inv in ALL_ITEMS:
+        if col not in base.columns:
+            missing_cols.append(col)
+            continue
+        x = -base[col] if inv else base[col]
+        base[f"pct__{col}"] = pct_rank_0_100(x)
+
     if missing_cols:
         print(f"\n⚠️  Columnas no encontradas (serán ignoradas): {len(missing_cols)}")
-        for col in missing_cols[:10]:  # Mostrar solo las primeras 10
-            print(f"  - {col}")
-        if len(missing_cols) > 10:
-            print(f"  ... y {len(missing_cols) - 10} más")
-    
+        for c in missing_cols[:12]:
+            print(f"  - {c}")
+        if len(missing_cols) > 12:
+            print(f"  ... y {len(missing_cols) - 12} más")
+
     # Score por categoría (promedio ponderado de percentiles)
     for cat, items in CATS.items():
         pct_items = [(f"pct__{col}", w) for col, w, _ in items if f"pct__{col}" in base.columns]
-        if pct_items:
-            base[cat] = wavg(base, pct_items)
-        else:
-            base[cat] = np.nan
-            print(f"⚠️  No se pudo calcular {cat} (todas las columnas faltantes)")
-    
+        base[cat] = wavg(base, pct_items) if pct_items else np.nan
+
     # Overall (promedio ponderado de categorías)
     num = 0.0
     den = 0.0
@@ -296,30 +231,27 @@ def run_delantero_scoring(
         valid = base[c].notna()
         num += base[c].fillna(0) * w * valid
         den += w * valid
-    
     base["Score_Overall"] = np.where(den > 0, num / den, np.nan)
-    
+
     print("✓ Scores calculados")
-    
+
     # =========================
     # FLAGS Y TAGS
     # =========================
-    print(f"\n🏷️  Asignando flags (top {int((1-flag_q)*100)}%)...")
-    
-    # Flags basados en cuantil
+    print(f"\n🏷️  Asignando flags (top {int((1 - flag_q) * 100)}%)...")
+
     for flag_name, score_col in [
         ("Flag_Finalizacion", "Score_Finalizacion"),
         ("Flag_Presionante", "Score_Presionante"),
         ("Flag_Conector", "Score_Conector"),
         ("Flag_Disruptivo", "Score_Disruptivo"),
     ]:
-        if score_col in base.columns:
+        if score_col in base.columns and base[score_col].notna().sum() > 0:
             threshold = base[score_col].quantile(flag_q)
             base[flag_name] = base[score_col] >= threshold
         else:
             base[flag_name] = False
-    
-    # Tags descriptivos
+
     def tags(r):
         t = []
         if r.get("Flag_Finalizacion", False): t.append("Killer")
@@ -327,22 +259,9 @@ def run_delantero_scoring(
         if r.get("Flag_Conector", False): t.append("Falso 9")
         if r.get("Flag_Disruptivo", False): t.append("Disruptivo")
         return " | ".join(t) if t else "Balanceados"
-    
+
     base["Flags"] = base.apply(tags, axis=1)
-    
-    # Estadísticas de flags
-    flag_counts = {
-        "Killer": base["Flag_Finalizacion"].sum(),
-        "Presionante": base["Flag_Presionante"].sum(),
-        "Falso 9": base["Flag_Conector"].sum(),
-        "Disruptivo": base["Flag_Disruptivo"].sum(),
-    }
-    
-    print("\n📈 Distribución de flags:")
-    for flag, count in flag_counts.items():
-        pct = count/len(base)*100 if len(base) > 0 else 0
-        print(f"  {flag}: {count} jugadores ({pct:.1f}%)")
-    
+
     # =========================
     # OUTPUT
     # =========================
@@ -355,26 +274,16 @@ def run_delantero_scoring(
         "Flags",
     ]
     cols = [c for c in cols if c in base.columns]
-    
+
     out = base[cols].sort_values("Score_Overall", ascending=False)
-    
-    # Crear directorio si no existe
-    out_csv.parent.mkdir(parents=True, exist_ok=True)
-    out.to_csv(out_csv, index=False, encoding="utf-8")
-    
-    print("\n✅ SCORING COMPLETADO")
-    print("="*70)
-    print(f"📁 Output guardado en: {out_csv}")
+
+    if out_csv is not None:
+        out_csv.parent.mkdir(parents=True, exist_ok=True)
+        out.to_csv(out_csv, index=False, encoding="utf-8")
+        print(f"\n✅ Output guardado en: {out_csv}")
+
+    print("=" * 70)
     print(f"📊 Jugadores evaluados: {len(out):,}")
-    
-    if not out.empty:
-        print(f"\n🏆 Top 5 {position_group}:")
-        top5_cols = ["player_name", "team_name", "Score_Overall", "Flags"]
-        top5_cols = [c for c in top5_cols if c in out.columns]
-        print(out[top5_cols].head().to_string(index=False))
-    
-    print("="*70)
-    
     return out
 
 
@@ -382,18 +291,14 @@ def run_delantero_scoring(
 # EJEMPLO DE USO
 # =========================
 if __name__ == "__main__":
-    from pathlib import Path
-    
-    # Rutas
     per90_csv = Path("outputs/all_players_complete_2025_2026.csv")
     out_csv = Path("outputs/delantero_scores_2025_2026.csv")
-    
-    # Ejecutar scoring para delanteros
+
     scores = run_delantero_scoring(
         per90_csv=per90_csv,
         out_csv=out_csv,
         position_group="Delantero",
         min_minutes=450,
         min_matches=3,
-        flag_q=0.75,  # Top 25%
+        flag_q=0.75,
     )

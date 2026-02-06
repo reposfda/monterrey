@@ -22,7 +22,7 @@ def sidebar_filters(
     # -------------------------
     pos = None
     if show_position:
-        positions = ["Zaguero", "Lateral", "Volante", "Interior/Mediapunta", "Extremo", "Delantero"]
+        positions = ["Golero", "Zaguero", "Lateral", "Volante", "Interior/Mediapunta", "Extremo", "Delantero"]
         out["position"] = st.sidebar.selectbox("Posición", positions, index=0)
         pos = out["position"]
 

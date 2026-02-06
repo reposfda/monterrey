@@ -8,6 +8,7 @@ import streamlit as st
 
 from utils.loaders import load_per90
 
+from position_scoring_golero import run_goalkeeper_scoring
 from position_scoring_defensor_central import run_cb_scoring
 from position_scoring_delantero import run_delantero_scoring
 from position_scoring_extremos import run_extremo_scoring
@@ -37,6 +38,17 @@ def compute_scoring(
 
     out_tmp = (Path("outputs") / "_tmp_scoring.csv")
     out_tmp.parent.mkdir(parents=True, exist_ok=True)
+
+    if position_key == "Golero":
+        return run_goalkeeper_scoring(
+            per90_csv=tmp_path, 
+            out_csv=out_tmp,
+            position_group="Golero",
+            min_minutes=min_minutes,
+            min_matches=min_matches,
+            flag_q=0.75,
+        )
+
 
     if position_key == "Zaguero":
         return run_cb_scoring(tmp_path, out_tmp, "Zaguero", min_minutes, min_matches, flag_q=0.75)

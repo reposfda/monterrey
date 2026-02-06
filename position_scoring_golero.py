@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Sistema de Scoring para Interiores / Mediapuntas (df-first)
+Sistema de Scoring para Goleros (df-first)
 
 Categorías:
-1. Box to Box
-2. Desequilibrio
-3. Organización
-4. Contención / Presión
+1. Effectiveness
+2. Area Domination
+3. Foot Play
+4. Outside Box
 
 Input:
-- df (preferido) o per90_csv
+- df (preferido) o per90_csv (outputs/all_players_complete_2025_2026.csv)
 """
 
 from __future__ import annotations
@@ -57,11 +57,11 @@ def filter_by_position_group(df: pd.DataFrame, group: str) -> pd.DataFrame:
 
 
 # ============= SCORING PRINCIPAL =============
-def run_interior_scoring(
+def run_goalkeeper_scoring(
     per90_csv: Path | None = None,
     out_csv: Path | None = None,
     df: pd.DataFrame | None = None,
-    position_group: str = "Interior/Mediapunta",
+    position_group: str = "Golero",
     min_minutes: int = 450,
     min_matches: int = 3,
     flag_q: float = 0.75,
@@ -71,12 +71,12 @@ def run_interior_scoring(
     print(f"SCORING DE {position_group.upper()}")
     print("=" * 70)
 
-    per90 = read_input(per90_csv=per90_csv, df=df)
-    print(f"✓ Total jugadores en input: {len(per90):,}")
+    base0 = read_input(per90_csv=per90_csv, df=df)
+    print(f"✓ Total jugadores en input: {len(base0):,}")
 
     # --- Filtrar por posición ---
     print(f"\n🔍 Filtrando por posición: {position_group}")
-    base = filter_by_position_group(per90, position_group)
+    base = filter_by_position_group(base0, position_group)
     print(f"✓ Jugadores en posición {position_group}: {len(base):,}")
 
     # --- Filtrar por minutos y partidos ---
@@ -91,7 +91,7 @@ def run_interior_scoring(
 
     print(f"✓ Jugadores después de filtros: {len(base):,}")
     if base.empty:
-        raise ValueError(f"No hay jugadores de {position_group} que cumplan los filtros.")
+        raise ValueError(f"No hay {position_group} que cumplan los filtros.")
 
     # --- Renombrar columnas para compatibilidad ---
     base = base.rename(columns={
@@ -103,86 +103,43 @@ def run_interior_scoring(
     # =========================
     # DEFINICIÓN DE CATEGORÍAS
     # =========================
-    BOX_TO_BOX = [
-        ("n_events_third_defensive_ball_recovery_per90", 0.11, False),
-        ("n_events_third_middle_ball_recovery_per90",    0.14, False),
-        ("n_events_third_attacking_ball_recovery_per90", 0.11, False),
-
-        ("n_events_third_defensive_duel_per90", 0.08, False),
-        ("n_events_third_middle_duel_per90",    0.14, False),
-        ("n_events_third_attacking_duel_per90", 0.08, False),
-
-        ("carry_into_final_third_per90", 0.10, False),
-        ("touches_in_opp_box_per90",     0.10, False),
-        ("shot_touch_pct",               0.05, False),
-
-        ("total_touches_per90", 0.09, False),
+    EFFECTIVENESS = [
+        ("gk_goals_prevented_per90", 0.50, False),
+        ("gk_save_pct", 0.25, False),
+        ("gk_errors_leading_to_shot_per90", 0.10, True),
+        ("gk_errors_leading_to_goal_per90", 0.15, True),
     ]
 
-    DESEQUILIBRIO = [
-        ("obv_total_net_type_dribble_per90", 0.30, False),
-        ("obv_total_net_type_carry_per90",   0.25, False),
-
-        ("carry_into_final_third_per90", 0.15, False),
-        ("pass_into_final_third_per90",  0.10, False),
-
-        ("obv_total_net_type_shot_per90", 0.10, False),
-        ("shot_statsbomb_xg_per90",       0.10, False),
+    AREA_DOMINATION = [
+        ("gk_claims_per90", 0.50, False),
+        ("gk_shots_open_play_in_box_against_per90", 0.50, True),
     ]
 
-    ORGANIZACION = [
-        ("obv_total_net_type_pass_per90", 0.30, False),
-        ("complete_passes_per90",         0.20, False),
-
-        ("pass_shot_assist_per90",                   0.12, False),
-        ("obv_total_net_third_attacking_pass_per90", 0.13, False),
-        ("obv_total_net_play_pattern_regular_play_per90", 0.10, False),
-
-        ("total_turnovers_per90", 0.15, True),
+    FOOT_PLAY = [
+        ("gk_pass_obv_per90", 0.40, False),
+        ("gk_long_ball_pct", 0.20, False),
+        ("gk_pressured_passes_def_third_per90", 0.20, False),
+        ("gk_pressured_passes_def_third_completion_pct", 0.20, False),
     ]
 
-    CONTENCION_PRESION = [
-        ("n_events_third_middle_pressure_per90",     0.18, False),
-        ("n_events_third_attacking_pressure_per90",  0.12, False),
-        ("counterpress_per90",                      0.10, False),
-
-        ("n_events_third_middle_ball_recovery_per90",    0.12, False),
-        ("n_events_third_attacking_ball_recovery_per90", 0.13, False),
-
-        ("obv_total_net_duel_type_tackle_per90", 0.10, False),
-        ("duel_tackle_per90",                    0.10, False),
-
-        ("obv_total_net_type_interception_per90",        0.08, False),
-        ("obv_total_net_third_middle_interception_per90", 0.07, False),
+    OUTSIDE_BOX = [
+        ("gk_actions_outside_box_per90", 0.50, False),
+        ("gk_aggressive_distance_avg", 0.50, False),
     ]
 
     CATS = {
-        "Score_BoxToBox": BOX_TO_BOX,
-        "Score_Desequilibrio": DESEQUILIBRIO,
-        "Score_Organizacion": ORGANIZACION,
-        "Score_ContencionPresion": CONTENCION_PRESION,
+        "Score_Effectiveness": EFFECTIVENESS,
+        "Score_Area_Domination": AREA_DOMINATION,
+        "Score_Foot_Play": FOOT_PLAY,
+        "Score_Outside_Box": OUTSIDE_BOX,
     }
 
     CAT_W = {
-        "Score_BoxToBox": 0.25,
-        "Score_Desequilibrio": 0.30,
-        "Score_Organizacion": 0.25,
-        "Score_ContencionPresion": 0.20,
+        "Score_Effectiveness": 0.50,
+        "Score_Area_Domination": 0.20,
+        "Score_Foot_Play": 0.15,
+        "Score_Outside_Box": 0.15,
     }
-
-    # =========================
-    # MÉTRICAS DERIVADAS (si aplica)
-    # =========================
-    print("\n🔧 Verificando métricas derivadas...")
-
-    if "complete_passes_per90" not in base.columns and "complete_passes" in base.columns and "minutes" in base.columns:
-        base["complete_passes"] = safe_numeric(base["complete_passes"])
-        base["complete_passes_per90"] = np.where(
-            safe_numeric(base["minutes"]) > 0,
-            base["complete_passes"] / safe_numeric(base["minutes"]) * 90.0,
-            np.nan
-        )
-        print("✓ complete_passes_per90 calculado")
 
     # =========================
     # CÁLCULO DE SCORES
@@ -202,11 +159,9 @@ def run_interior_scoring(
         if col not in base.columns:
             missing_cols.append(col)
             continue
-
         x = -base[col] if inv else base[col]
         base[f"pct__{col}"] = pct_rank_0_100(x)
 
-    missing_cols = sorted(set(missing_cols))
     if missing_cols:
         print(f"\n⚠️  Columnas no encontradas (serán ignoradas): {len(missing_cols)}")
         for c in missing_cols[:12]:
@@ -219,7 +174,7 @@ def run_interior_scoring(
         pct_items = [(f"pct__{c}", w) for c, w, _ in items if f"pct__{c}" in base.columns]
         base[cat] = wavg(base, pct_items) if pct_items else np.nan
 
-    # Overall ponderado robusto
+    # Overall ponderado (robusto a NaNs)
     num = 0.0
     den = 0.0
     for c, w in CAT_W.items():
@@ -238,10 +193,10 @@ def run_interior_scoring(
     print(f"\n🏷️  Asignando flags (top {int((1-flag_q)*100)}%)...")
 
     for flag_name, score_col in [
-        ("Flag_BoxToBox", "Score_BoxToBox"),
-        ("Flag_Desequilibrio", "Score_Desequilibrio"),
-        ("Flag_Organizacion", "Score_Organizacion"),
-        ("Flag_ContencionPresion", "Score_ContencionPresion"),
+        ("Flag_Effectiveness", "Score_Effectiveness"),
+        ("Flag_Area_Domination", "Score_Area_Domination"),
+        ("Flag_Foot_Play", "Score_Foot_Play"),
+        ("Flag_Outside_Box", "Score_Outside_Box"),
     ]:
         if score_col in base.columns and base[score_col].notna().sum() > 0:
             thr = base[score_col].quantile(flag_q)
@@ -251,11 +206,11 @@ def run_interior_scoring(
 
     def tags(r):
         t = []
-        if r.get("Flag_BoxToBox", False): t.append("Box to Box")
-        if r.get("Flag_Desequilibrio", False): t.append("Desequilibrantes")
-        if r.get("Flag_Organizacion", False): t.append("Organizadores")
-        if r.get("Flag_ContencionPresion", False): t.append("Contención/Presión")
-        return " | ".join(t) if t else "Balanceados"
+        if r.get("Flag_Effectiveness", False): t.append("Shot Stopper")
+        if r.get("Flag_Area_Domination", False): t.append("Dominante")
+        if r.get("Flag_Foot_Play", False): t.append("Con Pies")
+        if r.get("Flag_Outside_Box", False): t.append("Sweeper")
+        return " | ".join(t) if t else "Balanceado"
 
     base["Flags"] = base.apply(tags, axis=1)
 
@@ -265,9 +220,9 @@ def run_interior_scoring(
     cols = [
         "player_id", "player_name", "team_name", "matches", "minutes",
         "primary_position", "primary_position_share",
-        "Score_BoxToBox", "Score_Desequilibrio", "Score_Organizacion", "Score_ContencionPresion",
+        "Score_Effectiveness", "Score_Area_Domination", "Score_Foot_Play", "Score_Outside_Box",
         "Score_Overall",
-        "Flag_BoxToBox", "Flag_Desequilibrio", "Flag_Organizacion", "Flag_ContencionPresion",
+        "Flag_Effectiveness", "Flag_Area_Domination", "Flag_Foot_Play", "Flag_Outside_Box",
         "Flags",
     ]
     cols = [c for c in cols if c in base.columns]
@@ -280,18 +235,18 @@ def run_interior_scoring(
         print(f"\n✅ Output guardado en: {out_csv}")
 
     print("=" * 70)
-    print(f"📊 Jugadores evaluados: {len(out):,}")
+    print(f"📊 Goleros evaluados: {len(out):,}")
     return out
 
 
 if __name__ == "__main__":
     per90_csv = Path("outputs/all_players_complete_2025_2026.csv")
-    out_csv = Path("outputs/interior_scores_2025_2026.csv")
+    out_csv = Path("outputs/golero_scores_2025_2026.csv")
 
-    scores = run_interior_scoring(
+    scores = run_goalkeeper_scoring(
         per90_csv=per90_csv,
         out_csv=out_csv,
-        position_group="Interior/Mediapunta",
+        position_group="Golero",
         min_minutes=450,
         min_matches=3,
         flag_q=0.75,
