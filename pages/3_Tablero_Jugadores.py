@@ -203,7 +203,7 @@ with c1:
         st.image(str(LOGO_PATH), width=90)
 with c2:
     st.markdown("## Tablero Jugadores")
-    st.caption("Ficha individual + radar por categorías + detalle de métricas (lollipop).")
+    st.caption("Ficha individual con radar de categorías y métricas detalladas")
 
 st.markdown("---")
 
@@ -375,7 +375,7 @@ with col_radar:
 # DERECHA: LOLLIPOP
 # -------------------------
 with col_lolli:
-    st.markdown("#### Detalle – Lollipop (métricas)")
+    st.markdown("#### Métricas detalladas")
 
     c_mode, c_toggle = st.columns([0.72, 0.28], gap="small")
 
