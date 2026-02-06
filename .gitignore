@@ -3,3 +3,14 @@ notebook/
 
 **.csv
 **.txt
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# (opcional) entornos y cosas locales
+.venv/
+venv/
+.env
+.DS_Store
