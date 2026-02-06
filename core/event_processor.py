@@ -66,7 +66,7 @@ except Exception as e:
 # ============= CONFIG =============
 # Path del archivo de eventos desde config
 PATH = str(EVENTS_CSV)
-season = PATH.split('_', 1)[1].replace('.csv', '')
+season = EVENTS_CSV.name.split('_', 1)[1].replace('.csv', '')  # ← Cambiar esta línea
 
 # Configuraciones desde config.Processing
 ASSUME_END_CAP = Processing.ASSUME_END_CAP
