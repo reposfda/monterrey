@@ -14,6 +14,12 @@ TEXT = "#FFFFFF"
 GOLD = "#c49308"
 GOLD_SOFT = "#d6b35f"
 
+# --- layout estándar ---
+STD_ROWS = 16          # cantidad “ideal” de filas visibles
+MAX_ROWS = 22          # a partir de acá sí dejamos crecer
+STD_FIG_H = 6.8        # altura estándar final (ajustable)
+
+
 def plot_lollipop_mty(
     labels: list[str],
     values: list[float],
@@ -87,7 +93,17 @@ def plot_lollipop_mty(
 
     y = np.array(y, dtype="float64")
 
-    fig_h = max(min_h, row_h * (len(dfp) + 0.8 * len(dfp["category"].unique())) + 1.1)
+    n_rows = len(dfp)
+    n_cats = dfp["category"].nunique()
+
+    # altura base estándar
+    fig_h = STD_FIG_H
+
+    # si hay MUCHAS métricas, dejamos crecer un poco
+    if n_rows > MAX_ROWS:
+        extra_rows = n_rows - MAX_ROWS
+        fig_h += extra_rows * row_h * 0.9
+
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     fig.patch.set_facecolor(PRIMARY_BG)
     ax.set_facecolor(PRIMARY_BG)
@@ -123,7 +139,7 @@ def plot_lollipop_mty(
             if title_right:
                 ax.text(
                     x_ref,
-                    1.02,
+                    1.0,
                     title_right,
                     transform=ax.get_xaxis_transform(),
                     ha="center",
