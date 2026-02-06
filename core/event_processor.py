@@ -5,25 +5,35 @@ import json, ast
 import sys
 from datetime import datetime
 
+# Importar desde config centralizado
+from config import (
+    BASE_DIR,
+    DATA_DIR,
+    OUTPUTS_DIR,
+    EVENTS_CSV,
+    Processing,
+    ensure_directories
+)
+
 # Importar funciones de turnover
-from calculate_turnover import compute_player_turnovers, classify_turnover
+from turnover_calculator import compute_player_turnovers, classify_turnover
 
 # Importar módulo de análisis de carriles OBV
 try:
-    from obv_lanes_builder import calculate_lane_bias_metrics
+    from obv_lanes import calculate_lane_bias_metrics
     OBV_LANES_AVAILABLE = True
-    print("✓ Módulo obv_lanes_builder importado correctamente")
+    print("✓ Módulo obv_lanes importado correctamente")
 except ImportError as e:
-    print(f"⚠️  Módulo obv_lanes_builder no disponible: {e}")
-    print("   Asegúrate de que obv_lanes_builder.py está en el mismo directorio")
+    print(f"⚠️  Módulo obv_lanes no disponible: {e}")
+    print("   Asegúrate de que obv_lanes.py está en el mismo directorio")
     OBV_LANES_AVAILABLE = False
 except Exception as e:
-    print(f"❌ Error importando obv_lanes_builder: {e}")
+    print(f"❌ Error importando obv_lanes: {e}")
     OBV_LANES_AVAILABLE = False
 
 # Importar módulo de análisis de zonas defensivas OBV
 try:
-    from obv_def_zone_builder import calculate_cb_zone_metrics
+    from obv_zones import calculate_cb_zone_metrics
     CB_ZONE_AVAILABLE = True
     print("✓ Módulo cb_zone_builder importado correctamente")
 except ImportError as e:
@@ -35,23 +45,25 @@ except Exception as e:
 
 # Importar módulo de métricas de arqueros
 try:
-    from goalkeeper_metrics_builder import calculate_gk_metrics
+    from goalkeeper_metrics import calculate_gk_metrics
     GK_METRICS_AVAILABLE = True
-    print("✓ Módulo goalkeeper_metrics_builder importado correctamente")
+    print("✓ Módulo goalkeeper_metrics importado correctamente")
 except ImportError as e:
-    print(f"⚠️  Módulo goalkeeper_metrics_builder no disponible: {e}")
-    print("   Asegúrate de que goalkeeper_metrics_builder.py está en el mismo directorio")
+    print(f"⚠️  Módulo goalkeeper_metrics no disponible: {e}")
+    print("   Asegúrate de que goalkeeper_metrics.py está en el mismo directorio")
     GK_METRICS_AVAILABLE = False
 except Exception as e:
-    print(f"❌ Error importando goalkeeper_metrics_builder: {e}")
+    print(f"❌ Error importando goalkeeper_metrics: {e}")
     GK_METRICS_AVAILABLE = False
 
 # ============= CONFIG =============
-PATH = "data/events_2025_2026.csv"
+# ✅ Path del archivo de eventos desde config
+PATH = str(EVENTS_CSV)
 season = PATH.split('_', 1)[1].replace('.csv', '')
 
-ASSUME_END_CAP = 120
-OUTPUT_DIR = "./outputs"
+# ✅ Configuraciones desde config.Processing
+ASSUME_END_CAP = Processing.ASSUME_END_CAP
+OUTPUT_DIR = str(OUTPUTS_DIR)
 
 # ============= LOGGING SETUP =============
 class Logger:
@@ -71,19 +83,23 @@ class Logger:
     def close(self):
         self.log.close()
 
-# Crear directorio de outputs si no existe
-import os
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+# ✅ Asegurar que directorio de outputs existe
+ensure_directories()
 
 # Configurar logging
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_filename = os.path.join(OUTPUT_DIR, f"analysis_log_{season}_{timestamp}.txt")
-sys.stdout = Logger(log_filename)
+log_filename = OUTPUTS_DIR / f"analysis_log_{season}_{timestamp}.txt"
+sys.stdout = Logger(str(log_filename))
 
 print("="*70)
 print(f"ANÁLISIS DE EVENTOS - TEMPORADA {season}")
 print(f"Inicio: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print("="*70)
+print(f"\n📁 Configuración de paths:")
+print(f"  Events CSV: {EVENTS_CSV}")
+print(f"  Output Dir: {OUTPUTS_DIR}")
+print(f"\n⚙️  Configuración de procesamiento:")
+print(f"  ASSUME_END_CAP: {ASSUME_END_CAP}")
 
 # ============= COLUMNAS A DISCRIMINAR =============
 COLUMNS_TO_DISCRIMINATE = [
@@ -104,7 +120,7 @@ COLUMNS_TO_COUNT_ONLY = [
 ]
 
 # ============= CONFIG TERCIOS DE CANCHA =============
-ENABLE_THIRDS_ANALYSIS = True
+ENABLE_THIRDS_ANALYSIS = Processing.ENABLE_THIRDS_ANALYSIS
 
 THIRDS_EVENTS = [
     "Carry",
@@ -116,12 +132,12 @@ THIRDS_EVENTS = [
     "Dispossessed"
 ]
 
-ENABLE_CROSS_ATTACKING = True
+ENABLE_CROSS_ATTACKING = Processing.ENABLE_CROSS_ATTACKING
 
 # ============= CONFIG TURNOVERS =============
-ENABLE_TURNOVER_ANALYSIS = True
-TURNOVER_OPEN_PLAY_ONLY = True
-TURNOVER_EXCLUDE_RESTARTS = True
+ENABLE_TURNOVER_ANALYSIS = Processing.ENABLE_TURNOVER_ANALYSIS
+TURNOVER_OPEN_PLAY_ONLY = Processing.TURNOVER_OPEN_PLAY_ONLY
+TURNOVER_EXCLUDE_RESTARTS = Processing.TURNOVER_EXCLUDE_RESTARTS
 
 # ============= MÉTRICAS A DISCRIMINAR =============
 METRICS_TO_SPLIT = ["obv_total_net", "shot_statsbomb_xg"]
@@ -1829,7 +1845,7 @@ if OBV_LANES_AVAILABLE:
         import traceback
         traceback.print_exc()
 else:
-    print("\n⚠️  Módulo obv_lanes_builder no disponible. Métricas de carriles omitidas.")
+    print("\n⚠️  Módulo obv_lanes no disponible. Métricas de carriles omitidas.")
 
 if CB_ZONE_AVAILABLE:
     try:
@@ -1895,7 +1911,7 @@ if GK_METRICS_AVAILABLE:
         import traceback
         traceback.print_exc()
 else:
-    print("\n⚠️  Módulo goalkeeper_metrics_builder no disponible. Métricas de arqueros omitidas.")
+    print("\n⚠️  Módulo goalkeeper_metrics no disponible. Métricas de arqueros omitidas.")
 
 # ============= 12) EXPORTS CON TEMPORADA EN NOMBRE =============
 print("\n" + "="*70)
@@ -1903,12 +1919,12 @@ print("EXPORTANDO RESULTADOS")
 print("="*70)
 
 # ============= ÚNICO EXPORT CSV: all_players_complete =============
-output_complete = os.path.join(OUTPUT_DIR, f"all_players_complete_{season}.csv")
+output_complete = OUTPUTS_DIR / f"all_players_complete_{season}.csv"
 final_df.to_csv(output_complete, index=False, encoding="utf-8-sig")
 print(f"\n✓ CSV EXPORTADO: {output_complete}")
 
 # ============= EXPORT: player_minutes_by_match =============
-output_minutes = os.path.join(OUTPUT_DIR, f"player_minutes_by_match_{season}.csv")
+output_minutes = OUTPUTS_DIR / f"player_minutes_by_match_{season}.csv"
 minutes_by_match_export = minutes_df.merge(
     player_minutes_summary[["player_id", "player_name", "primary_position"]],
     on="player_id", how="left"
