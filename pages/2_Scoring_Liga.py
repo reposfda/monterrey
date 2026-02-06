@@ -175,17 +175,19 @@ cols_show = base_cols + cat_cols_pretty
 # APLICAR PESOS DE CATEGORÍAS (WHAT-IF) -> Score_Ajustado
 # =============================================================================
 
-def _to_pretty_key(score_key: str) -> str:
-    """Convierte Score_AccionDefensiva -> Accion Defensiva"""
-    k = score_key.replace("Score_", "").replace("score_", "").replace("_", " ").strip().title()
-    return k
+# --- mapping exacto: ScoreKey -> Label (el mismo que usaste para renombrar)
+scorekey_to_label = {k: label for k, label in macro}
 
-# Construir pares (pretty_col, weight) que existan en scores_disp
 pairs = []
-for k, w in (cat_w or {}).items():
-    pretty_k = _to_pretty_key(k)
-    if pretty_k in scores_disp.columns:
-        pairs.append((pretty_k, float(w)))
+for score_key, w in (cat_w or {}).items():
+    label = scorekey_to_label.get(score_key)
+
+    # Si por algún motivo no está en macro, fallback suave
+    if label is None:
+        continue
+
+    if label in scores_disp.columns:
+        pairs.append((label, float(w)))
 
 # Si tenemos 2+ pesos válidos, calculamos Score_Ajustado
 if len(pairs) >= 2:

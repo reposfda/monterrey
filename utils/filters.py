@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
-from utils.role_config import get_category_weights, strip_score_prefix
+from utils.role_config import get_category_weights, strip_score_prefix, get_macro_config
 
 
 def sidebar_filters(
@@ -66,9 +66,10 @@ def sidebar_filters(
 
             # sliders "libres" (no normalizan)
             draft = st.session_state[key_draft].copy()
+            macro_map = {k: label for k, label in get_macro_config(pos)}  # Score_Key -> "Label en español"
             for cat in cats:
                 draft[cat] = st.sidebar.slider(
-                    strip_score_prefix(cat),
+                    macro_map.get(cat, strip_score_prefix(cat)),
                     0.0, 1.0,
                     float(draft.get(cat, base_w[cat])),
                     0.05,
