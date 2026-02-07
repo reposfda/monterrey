@@ -110,6 +110,7 @@ with st.spinner("Calculando scoring..."):
             min_minutes=min_minutes,
             min_matches=min_matches,
             selected_teams=selected_teams,
+            cat_weights=cat_w,   # 👈 FIX CLAVE
         )
     except ValueError:
         st.warning(f"No hay jugadores de {pos} que cumplan los filtros actuales.")
@@ -137,16 +138,19 @@ score_overall_candidates = [
     if c.lower() in ["score_overall", "score_total", "overall_score", "score"]
 ]
 
-if "Score_Overall" in scores.columns:
-    scores_disp["Score"] = pd.to_numeric(scores["Score_Overall"], errors="coerce")
-elif "score_overall" in scores.columns:
-    scores_disp["Score"] = pd.to_numeric(scores["score_overall"], errors="coerce")
-elif "score_total" in scores.columns:
-    scores_disp["Score"] = pd.to_numeric(scores["score_total"], errors="coerce")
-elif "Score" in scores_disp.columns:
-    scores_disp["Score"] = pd.to_numeric(scores_disp["Score"], errors="coerce")
+# ✅ Buscar columna de score (el nuevo módulo scoring/ usa Score_Total)
+score_col_candidates = ["Score_Total", "Score_Overall", "score_overall", "score_total", "Score"]
+
+score_col = None
+for candidate in score_col_candidates:
+    if candidate in scores.columns:
+        score_col = candidate
+        break
+
+if score_col:
+    scores_disp["Score"] = pd.to_numeric(scores[score_col], errors="coerce")
 else:
-    st.error("No encuentro columna de score overall (Score_Overall / score_overall / score_total / Score).")
+    st.error(f"No encuentro columna de score. Columnas disponibles: {scores.columns.tolist()}")
     st.stop()
 
 # Detectar scores por categoría
@@ -175,19 +179,16 @@ cols_show = base_cols + cat_cols_pretty
 # APLICAR PESOS DE CATEGORÍAS (WHAT-IF) -> Score_Ajustado
 # =============================================================================
 
-# --- mapping exacto: ScoreKey -> Label (el mismo que usaste para renombrar)
-scorekey_to_label = {k: label for k, label in macro}
+# Mapa real Score_X -> Label bonito (desde role_config)
+macro = get_macro_config(pos)  # [(Score_x, "Label"), ...]
+score_to_label = {score_col: label for score_col, label in macro}
 
 pairs = []
 for score_key, w in (cat_w or {}).items():
-    label = scorekey_to_label.get(score_key)
-
-    # Si por algún motivo no está en macro, fallback suave
-    if label is None:
-        continue
-
-    if label in scores_disp.columns:
+    label = score_to_label.get(score_key)
+    if label and label in scores_disp.columns:
         pairs.append((label, float(w)))
+
 
 # Si tenemos 2+ pesos válidos, calculamos Score_Ajustado
 if len(pairs) >= 2:
@@ -263,7 +264,9 @@ with st.expander("Ver ranking completo"):
     
     # Renombrar SOLO columnas base (NO scores por rol, ya están "pretty")
     base_labels = COL_LABELS_ES.copy()
-    base_labels.pop("Score_Overall", None)  # Evitar conflictos
+    # Evitar conflictos con múltiples variantes de columnas de score
+    for score_key in ["Score_Overall", "Score_Total", "score_overall", "score_total"]:
+        base_labels.pop(score_key, None)
     df_disp = df_disp.rename(columns=base_labels)
     
     st.dataframe(df_disp, use_container_width=True)

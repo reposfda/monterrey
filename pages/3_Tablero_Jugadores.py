@@ -352,7 +352,7 @@ col_matches = find_col(scores, ["matches", "PJ"])
 col_profile = find_col(scores, ["Flags", "Perfil"])
 col_score_overall = find_col(
     scores,
-    ["Score_Overall", "score_overall", "score_total", "Score"]
+    ["Score_Total", "Score_Overall", "score_overall", "score_total", "Score"]
 )
 
 if col_player is None or col_team is None:
