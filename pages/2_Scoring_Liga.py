@@ -23,7 +23,6 @@ import plotly.graph_objects as go
 
 # ✅ Importar desde config centralizado
 from config import (
-    PER90_CSV,
     LOGO_PATH,
     Colors,
     Defaults,
@@ -31,6 +30,7 @@ from config import (
 )
 
 from utils.loaders import load_per90
+from utils.season_manager import season_selector, get_current_per90_csv
 from utils.filters import sidebar_filters
 from utils.metrics_labels import COL_LABELS_ES
 from utils.role_config import get_macro_config
@@ -48,11 +48,18 @@ st.set_page_config(
 # ✅ Aplicar estilos globales (reemplaza TODO el CSS duplicado)
 apply_global_styles()
 
+# =============================================================================
+# SELECTOR DE TEMPORADA (PRIMERO EN SIDEBAR)
+# =============================================================================
+selected_season = season_selector()
+PER90_CSV = get_current_per90_csv()
+
 # Verificar que existe el archivo base
 if not PER90_CSV.exists():
     st.error(f"❌ No se encontró el archivo base per90 en: {PER90_CSV}")
     st.info(
-        "Por favor, ejecutá primero:\n\n"
+        f"No hay datos disponibles para la temporada {selected_season}.\n\n"
+        "Por favor, seleccioná otra temporada o ejecutá:\n\n"
         "```bash\n"
         "python calculate_main_csv.py\n"
         "```"
