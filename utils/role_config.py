@@ -1,32 +1,287 @@
 # utils/role_config.py
+# -*- coding: utf-8 -*-
+"""
+Configuración de roles y métricas por posición.
+
+ACTUALIZADO para usar el nuevo módulo scoring/ en lugar de parsear archivos.
+"""
 from __future__ import annotations
-
+from typing import Dict, List, Tuple
 from pathlib import Path
-import ast
-from typing import Dict, List
 
-# =========================
-# MACRO: categorías del rol (Score_*)
-# =========================
-ROLE_MACRO = {
+
+# =============================================================================
+# MÉTRICAS DETALLADAS POR POSICIÓN (importadas desde scoring/)
+# =============================================================================
+
+# Estas son las listas de métricas que antes se parseaban de los archivos
+# Ahora las definimos directamente aquí para que role_config sea independiente
+
+DETAIL_METRICS_BY_POSITION = {
+    "Golero": {
+        "Efectividad": [
+            ("gk_goals_prevented_per90", 0.50, False),
+            ("gk_save_pct", 0.25, False),
+            ("gk_errors_leading_to_shot_per90", 0.10, True),
+            ("gk_errors_leading_to_goal_per90", 0.15, True),
+        ],
+        "Dominio de Área": [
+            ("gk_claims_per90", 0.50, False),
+            ("gk_shots_open_play_in_box_against_per90", 0.50, True),
+        ],
+        "Juego de Pies": [
+            ("gk_pass_obv_per90", 0.40, False),
+            ("gk_long_ball_pct", 0.20, False),
+            ("gk_pressured_passes_def_third_per90", 0.20, False),
+            ("gk_pressured_passes_def_third_completion_pct", 0.20, False),
+        ],
+        "Fuera del Área": [
+            ("gk_actions_outside_box_per90", 0.50, False),
+            ("gk_aggressive_distance_avg", 0.50, False),
+        ],
+    },
+    
+    "Zaguero": {
+        "Acción Defensiva": [
+            ("duel_success_rate", 0.25, False),
+            ("tackle_success_pct", 0.25, False),
+            ("ball_recovery_success_pct", 0.15, False),
+            ("interception_success_rate", 0.10, False),
+            ("clearances_total_per90", 0.10, False),
+            ("blocks_total_per90", 0.05, False),
+            ("defensive_actions_lost_per90", 0.10, True),
+        ],
+        "Control Defensivo": [
+            ("pressure_per90", 0.15, False),
+            ("counterpress_per90", 0.15, False),
+            ("obv_into_per90", 0.25, True),
+            ("obv_from_per90", 0.25, True),
+            ("shots_from_area_per90", 0.10, True),
+            ("xg_from_area_per90", 0.10, True),
+        ],
+        "Progresión": [
+            ("pass_completion_rate", 0.15, False),
+            ("pass_into_final_third_per90", 0.20, False),
+            ("pass_switch_per90", 0.20, False),
+            ("carry_into_final_third_per90", 0.10, False),
+            ("pass_through_ball_per90", 0.15, False),
+            ("obv_total_net_type_pass_per90", 0.20, False),
+        ],
+        "Impacto Ofensivo": [
+            ("shot_statsbomb_xg_play_pattern_regular_play_per90", 0.15, False),
+            ("shot_statsbomb_xg_play_pattern_from_corner_per90", 0.075, False),
+            ("shot_statsbomb_xg_play_pattern_from_free_kick_per90", 0.075, False),
+            ("obv_total_net_play_pattern_regular_play_per90", 0.15, False),
+            ("obv_total_net_play_pattern_from_free_kick_per90", 0.075, False),
+            ("obv_total_net_play_pattern_from_corner_per90", 0.075, False),
+        ],
+    },
+    
+    "Lateral": {
+        "Defensivo (Exec)": [
+            ("duel_success_rate", 0.25, False),
+            ("tackle_success_pct", 0.25, False),
+            ("ball_recovery_success_pct", 0.15, False),
+            ("interception_success_rate", 0.10, False),
+            ("clearances_total_per90", 0.10, False),
+            ("blocks_total_per90", 0.05, False),
+            ("defensive_actions_lost_per90", 0.10, True),
+        ],
+        "Defensivo (OBV)": [
+            ("obv_total_net_type_duel_per90", 0.20, False),
+            ("obv_total_net_duel_type_tackle_per90", 0.25, False),
+            ("obv_total_net_type_interception_per90", 0.20, False),
+            ("obv_total_net_type_ball_recovery_per90", 0.20, False),
+            ("obv_total_net_type_clearance_per90", 0.15, False),
+        ],
+        "Presión": [
+            ("pressure_per90", 0.35, False),
+            ("n_events_third_attacking_pressure_per90", 0.35, False),
+            ("ball_recovery_offensive_per90", 0.15, False),
+            ("counterpress_per90", 0.15, False),
+        ],
+        "Profundidad": [
+            ("pass_into_final_third_per90", 0.15, False),
+            ("carry_into_final_third_per90", 0.25, False),
+            ("n_events_third_attacking_pass_per90", 0.20, False),
+            ("n_events_third_attacking_pass_cross_openplay_per90", 0.20, False),
+            ("xa_per90", 0.20, False),
+        ],
+        "Calidad": [
+            ("obv_total_net_type_pass_per90", 0.45, False),
+            ("obv_total_net_type_dribble_per90", 0.25, False),
+            ("obv_total_net_type_carry_per90", 0.20, False),
+            ("total_turnovers_per90", 0.10, True),
+        ],
+    },
+    
+    "Volante": {
+        "Posesión": [
+            ("complete_passes_per90", 0.20, False),
+            ("completed_passes_under_pressure_per90", 0.30, False),
+            ("total_turnovers_per90", 0.20, True),
+            ("obv_total_net_type_pass_per90", 0.30, False),
+        ],
+        "Progresión": [
+            ("pass_into_final_third_per90", 0.20, False),
+            ("carry_into_final_third_per90", 0.20, False),
+            ("obv_total_net_type_carry_per90", 0.20, False),
+            ("pass_switch_per90", 0.20, False),
+            ("pass_through_ball_per90", 0.20, False),
+        ],
+        "Territoriales": [
+            ("n_events_third_defensive_pressure_per90", 0.12, False),
+            ("n_events_third_middle_pressure_per90", 0.18, False),
+            ("counterpress_per90", 0.05, False),
+            ("n_events_third_defensive_ball_recovery_per90", 0.15, False),
+            ("n_events_third_middle_ball_recovery_per90", 0.20, False),
+            ("obv_total_net_type_interception_per90", 0.15, False),
+            ("obv_total_net_type_ball_recovery_per90", 0.15, False),
+        ],
+        "Contención": [
+            ("duel_tackle_per90", 0.22, False),
+            ("obv_total_net_duel_type_tackle_per90", 0.23, False),
+            ("interception_success_rate", 0.17, False),
+            ("obv_total_net_type_interception_per90", 0.23, False),
+            ("n_events_third_defensive_interception_per90", 0.15, False),
+        ],
+    },
+    
+    "Interior/Mediapunta": {
+        "Box to Box": [
+            ("n_events_third_defensive_ball_recovery_per90", 0.11, False),
+            ("n_events_third_middle_ball_recovery_per90", 0.14, False),
+            ("n_events_third_attacking_ball_recovery_per90", 0.11, False),
+            ("n_events_third_defensive_duel_per90", 0.08, False),
+            ("n_events_third_middle_duel_per90", 0.14, False),
+            ("n_events_third_attacking_duel_per90", 0.08, False),
+            ("carry_into_final_third_per90", 0.10, False),
+            ("touches_in_opp_box_per90", 0.10, False),
+            ("shot_touch_pct", 0.05, False),
+            ("total_touches_per90", 0.09, False),
+        ],
+        "Desequilibrio": [
+            ("obv_total_net_type_dribble_per90", 0.30, False),
+            ("obv_total_net_type_carry_per90", 0.25, False),
+            ("carry_into_final_third_per90", 0.15, False),
+            ("pass_into_final_third_per90", 0.10, False),
+            ("obv_total_net_type_shot_per90", 0.10, False),
+            ("shot_statsbomb_xg_per90", 0.10, False),
+        ],
+        "Organización": [
+            ("obv_total_net_type_pass_per90", 0.30, False),
+            ("complete_passes_per90", 0.20, False),
+            ("pass_shot_assist_per90", 0.12, False),
+            ("obv_total_net_third_attacking_pass_per90", 0.13, False),
+            ("obv_total_net_play_pattern_regular_play_per90", 0.10, False),
+            ("total_turnovers_per90", 0.15, True),
+        ],
+        "Contención/Presión": [
+            ("n_events_third_middle_pressure_per90", 0.18, False),
+            ("n_events_third_attacking_pressure_per90", 0.12, False),
+            ("counterpress_per90", 0.10, False),
+            ("n_events_third_middle_ball_recovery_per90", 0.12, False),
+            ("n_events_third_attacking_ball_recovery_per90", 0.13, False),
+            ("obv_total_net_duel_type_tackle_per90", 0.10, False),
+            ("duel_tackle_per90", 0.10, False),
+            ("obv_total_net_type_interception_per90", 0.08, False),
+            ("obv_total_net_third_middle_interception_per90", 0.07, False),
+        ],
+    },
+    
+    "Extremo": {
+        "Compromiso defensivo": [
+            ("n_events_third_attacking_pressure_per90", 0.20, False),
+            ("counterpress_per90", 0.20, False),
+            ("n_events_third_attacking_ball_recovery_per90", 0.15, False),
+            ("obv_total_net_type_ball_recovery_per90", 0.20, False),
+            ("obv_total_net_type_interception_per90", 0.10, False),
+            ("pressure_per90", 0.15, False),
+        ],
+        "Desequilibrio": [
+            ("obv_total_net_type_dribble_per90", 0.18, False),
+            ("obv_total_net_type_carry_per90", 0.18, False),
+            ("carry_into_final_third_per90", 0.10, False),
+            ("pass_into_final_third_per90", 0.08, False),
+            ("pass_shot_assist_per90", 0.15, False),
+            ("pass_goal_assist_per90", 0.05, False),
+            ("xa_per90", 0.12, False),
+            ("obv_total_net_type_pass_per90", 0.14, False),
+        ],
+        "Finalización": [
+            ("shot_statsbomb_xg_per90", 0.35, False),
+            ("obv_total_net_type_shot_per90", 0.25, False),
+            ("xg_per_shot", 0.20, False),
+            ("touches_in_opp_box_per90", 0.20, False),
+        ],
+        "Zona de influencia": [
+            ("obv_from_ext_per90", 0.35, False),
+            ("obv_from_int_per90", 0.35, False),
+            ("obv_total_net_type_pass_per90", 0.30, False),
+        ],
+    },
+    
+    "Delantero": {
+        "Finalización": [
+            ("xg_per_shot", 0.20, False),
+            ("shot_statsbomb_xg_per90", 0.18, False),
+            ("obv_total_net_type_shot_per90", 0.15, False),
+            ("goals_per90", 0.05, False),
+            ("touches_in_opp_box_per90", 0.15, False),
+            ("touches_in_opp_box_pct", 0.10, False),
+            ("obv_total_net_play_pattern_regular_play_per90", 0.10, False),
+            ("total_shots_per90", 0.04, False),
+            ("shot_touch_pct", 0.03, False),
+        ],
+        "Presionante": [
+            ("pressure_per90", 0.30, False),
+            ("n_events_third_attacking_pressure_per90", 0.20, False),
+            ("counterpress_per90", 0.15, False),
+            ("ball_recovery_offensive_per90", 0.15, False),
+            ("n_events_third_attacking_ball_recovery_per90", 0.10, False),
+            ("obv_total_net_type_interception_per90", 0.05, False),
+            ("obv_total_net_type_ball_recovery_per90", 0.05, False),
+        ],
+        "Conector": [
+            ("complete_passes_per90", 0.25, False),
+            ("pass_completion_rate", 0.15, False),
+            ("pass_into_final_third_per90", 0.15, False),
+            ("obv_total_net_type_pass_per90", 0.25, False),
+            ("pass_shot_assist_per90", 0.15, False),
+            ("total_turnovers_per90", 0.05, True),
+        ],
+        "Disruptivo": [
+            ("obv_total_net_type_dribble_per90", 0.40, False),
+            ("obv_total_net_type_carry_per90", 0.35, False),
+            ("carry_into_final_third_per90", 0.15, False),
+            ("pass_into_final_third_per90", 0.10, False),
+        ],
+    },
+}
+
+
+# =============================================================================
+# CONFIGURACIÓN DE RADAR MACRO (sin cambios)
+# =============================================================================
+
+ROLE_MACRO: Dict[str, List[Tuple[str, str]]] = {
     "Golero": [
         ("Score_Effectiveness", "Efectividad"),
-        ("Score_Area_Domination", "Dominio del área"),
-        ("Score_Foot_Play", "Juego de pies"),         
-        ("Score_Outside_Box", "Acciones fuera del área"),
+        ("Score_Area_Domination", "Dominio de Área"),
+        ("Score_Foot_Play", "Juego de Pies"),
+        ("Score_Outside_Box", "Fuera del Área"),
     ],
-
     "Zaguero": [
-        ("Score_ControlDefensivo", "Control Defensivo"),
         ("Score_AccionDefensiva", "Acción Defensiva"),
+        ("Score_ControlDefensivo", "Control Defensivo"),
         ("Score_Progresion", "Progresión"),
         ("Score_ImpactoOfensivo", "Impacto Ofensivo"),
     ],
     "Lateral": [
-        ("Score_Defensivo", "Defensivo"),
-        ("Score_Presion", "Presión"),
         ("Score_Profundidad", "Profundidad"),
         ("Score_Calidad", "Calidad"),
+        ("Score_Presion", "Presión"),
+        ("Score_Defensivo", "Defensivo"),
     ],
     "Volante": [
         ("Score_Posesion", "Posesión"),
@@ -35,16 +290,16 @@ ROLE_MACRO = {
         ("Score_Contencion", "Contención"),
     ],
     "Interior/Mediapunta": [
-        ("Score_Organizacion", "Organización"),
         ("Score_BoxToBox", "Box to Box"),
         ("Score_Desequilibrio", "Desequilibrio"),
+        ("Score_Organizacion", "Organización"),
         ("Score_ContencionPresion", "Contención/Presión"),
     ],
     "Extremo": [
-        ("Score_ZonaInfluencia", "Zona de influencia"),
+        ("Score_CompromisoDef", "Compromiso defensivo"),
         ("Score_Desequilibrio", "Desequilibrio"),
         ("Score_Finalizacion", "Finalización"),
-        ("Score_CompromisoDef", "Compromiso defensivo"),
+        ("Score_ZonaInfluencia", "Zona de influencia"),
     ],
     "Delantero": [
         ("Score_Finalizacion", "Finalización"),
@@ -54,198 +309,118 @@ ROLE_MACRO = {
     ],
 }
 
-# =========================
-# DETALLADO: nombres de listas dentro de cada script
-# (se parsean desde el .py, así evitás duplicar las listas)
-# =========================
-ROLE_DETAIL_SPECS = {
-    "Golero": {
-        "file": "position_scoring_golero.py",
-        "cats": {
-            "Efectividad": "EFFECTIVENESS",
-            "Dominio del área": "AREA_DOMINATION",
-            "Juego con los pies": "FOOT_PLAY",
-            "Acciones fuera del área": "OUTSIDE_BOX",
-        },
-    },
 
-    "Zaguero": {
-        "file": "position_scoring_defensor_central.py",
-        "cats": {
-            "Control Defensivo": "CONTROL_DEF",
-            "Acción Defensiva": "ACCION_DEF",
-            "Progresión": "PROGRESION",
-            "Impacto Ofensivo": "OFENSIVO",
-        },
-    },
-    "Lateral": {
-        "file": "position_scoring_lateral.py",
-        "cats": {
-            "Defensivo (Exec)": "DEF_EXEC",
-            "Defensivo (OBV)": "DEF_OBV",
-            "Presión": "PRESS",
-            "Profundidad": "DEPTH",
-            "Calidad": "QUALITY",
-        },
-    },
-    "Volante": {
-        "file": "position_scoring_volante.py",
-        "cats": {
-            "Posesión": "POSESION",
-            "Progresión": "PROGRESION",
-            "Territoriales": "TERRITORIALES",
-            "Contención": "CONTENCION",
-        },
-    },
-    "Interior/Mediapunta": {
-        "file": "position_scoring_interior.py",
-        "cats": {
-            "Organización": "ORGANIZACION",
-            "Box to Box": "BOX_TO_BOX",
-            "Desequilibrio": "DESEQUILIBRIO",
-            "Contención/Presión": "CONTENCION_PRESION",
-        },
-    },
-    "Extremo": {
-        "file": "position_scoring_extremos.py",
-        "cats": {
-            "Zona de influencia": "ZONA_INFLUENCIA",
-            "Desequilibrio": "DESEQUILIBRIO",
-            "Finalización": "FINALIZACION",
-            "Compromiso defensivo": "COMPROMISO_DEF",
-        },
-    },
-    "Delantero": {
-        "file": "position_scoring_delantero.py",
-        "cats": {
-            "Finalización": "FINALIZACION",
-            "Presionante": "PRESIONANTE",
-            "Conector": "CONECTOR",
-            "Disruptivo": "DISRUPTIVO",
-        },
-    },
-}
+# =============================================================================
+# FUNCIONES PÚBLICAS (actualizadas para usar diccionario en lugar de parsear)
+# =============================================================================
 
-
-def _extract_list_literal(py_text: str, varname: str):
-    """
-    Busca 'VARNAME = [ ... ]' y devuelve la lista (via ast.literal_eval).
-    """
-    key = f"{varname} = ["
-    idx = py_text.find(key)
-    if idx == -1:
-        return None
-
-    start = py_text.find("[", idx)
-    depth = 0
-    end = None
-    for i in range(start, len(py_text)):
-        ch = py_text[i]
-        if ch == "[":
-            depth += 1
-        elif ch == "]":
-            depth -= 1
-            if depth == 0:
-                end = i + 1
-                break
-
-    if end is None:
-        return None
-
-    literal = py_text[start:end]
-    return ast.literal_eval(literal)
-
-
-def get_macro_config(position_key: str):
+def get_macro_config(position_key: str) -> List[Tuple[str, str]]:
     """
     Devuelve lista de (col_score, label) para el radar macro.
+    
+    Parameters
+    ----------
+    position_key : str
+        Nombre de la posición
+    
+    Returns
+    -------
+    List[Tuple[str, str]]
+        Lista de tuplas (columna_score, etiqueta_display)
     """
     return ROLE_MACRO.get(position_key, [])
 
 
-def get_detail_categories(position_key: str):
+def get_detail_categories(position_key: str) -> List[str]:
     """
-    Devuelve labels disponibles para el radar detallado (según scripts).
+    Devuelve labels disponibles para el lollipop detallado.
+    
+    Parameters
+    ----------
+    position_key : str
+        Nombre de la posición
+    
+    Returns
+    -------
+    List[str]
+        Lista de nombres de categorías detalladas
     """
-    spec = ROLE_DETAIL_SPECS.get(position_key)
-    if not spec:
+    metrics = DETAIL_METRICS_BY_POSITION.get(position_key)
+    if not metrics:
         return []
-    return list(spec["cats"].keys())
+    return list(metrics.keys())
 
 
-def get_detail_metric_list(position_key: str, detail_label: str, base_dir: Path):
+def get_detail_metric_list(
+    position_key: str, 
+    detail_label: str, 
+    base_dir: Path = None  # Ya no se usa pero mantenemos firma
+) -> List[Tuple[str, float, bool]] | None:
     """
-    Lee el script de scoring correspondiente y devuelve la lista de métricas:
-    [(metric, weight, invert), ...]
+    Devuelve la lista de métricas para una categoría detallada.
+    
+    Parameters
+    ----------
+    position_key : str
+        Nombre de la posición
+    detail_label : str
+        Nombre de la categoría detallada
+    base_dir : Path, optional
+        No se usa (mantenido por compatibilidad)
+    
+    Returns
+    -------
+    List[Tuple[str, float, bool]] | None
+        Lista de tuplas (metric_name, weight, inverted) o None si no existe
     """
-    spec = ROLE_DETAIL_SPECS.get(position_key)
-    if not spec:
+    metrics = DETAIL_METRICS_BY_POSITION.get(position_key)
+    if not metrics:
         return None
+    
+    return metrics.get(detail_label)
 
-    varname = spec["cats"].get(detail_label)
-    if not varname:
-        return None
 
-    script_path = base_dir / spec["file"]
-    if not script_path.exists():
-        return None
+# =============================================================================
+# PESOS DE CATEGORÍAS (sin cambios)
+# =============================================================================
 
-    txt = script_path.read_text(encoding="utf-8", errors="ignore")
-    return _extract_list_literal(txt, varname)
-
-# --------------------
-# Pesos de categorías (exactos)
-# --------------------
 CATEGORY_WEIGHTS_BY_POSITION: Dict[str, Dict[str, float]] = {
-
     "Golero": {
         "Score_Effectiveness": 0.50,
         "Score_Area_Domination": 0.20,
         "Score_Foot_Play": 0.15,
         "Score_Outside_Box": 0.15,
     },
-
-    # Zaguero  -> position_scoring_defensor_central.py (CAT_W)
     "Zaguero": {
         "Score_AccionDefensiva": 0.25,
         "Score_ControlDefensivo": 0.45,
         "Score_Progresion": 0.20,
         "Score_ImpactoOfensivo": 0.10,
     },
-
-    # Lateral -> position_scoring_lateral.py (CAT_W)
     "Lateral": {
         "Score_Profundidad": 0.30,
         "Score_Calidad": 0.30,
         "Score_Presion": 0.20,
         "Score_Defensivo": 0.20,
     },
-
-    # Volante -> position_scoring_volante.py (CAT_W)
     "Volante": {
         "Score_Posesion": 0.25,
         "Score_Progresion": 0.30,
         "Score_Territoriales": 0.25,
         "Score_Contencion": 0.20,
     },
-
-    # Interior/Mediapunta -> position_scoring_interior.py (CAT_W)
     "Interior/Mediapunta": {
         "Score_BoxToBox": 0.25,
         "Score_Desequilibrio": 0.30,
         "Score_Organizacion": 0.25,
         "Score_ContencionPresion": 0.20,
     },
-
-    # Extremo -> position_scoring_extremos.py (CAT_W)
     "Extremo": {
         "Score_CompromisoDef": 0.20,
         "Score_Desequilibrio": 0.35,
         "Score_Finalizacion": 0.30,
         "Score_ZonaInfluencia": 0.15,
     },
-
-    # Delantero -> position_scoring_delantero.py (CAT_W)
     "Delantero": {
         "Score_Finalizacion": 0.40,
         "Score_Presionante": 0.10,
@@ -255,35 +430,42 @@ CATEGORY_WEIGHTS_BY_POSITION: Dict[str, Dict[str, float]] = {
 }
 
 
-# --------------------
-# Splits internos (solo si aplica)
-# --------------------
-# Lateral: Defensivo = combinación interna Exec + OBV
-LATERAL_DEF_SPLIT: Dict[str, float] = {
-    "DEF_EXEC": 0.60,  # def_exec_w
-    "DEF_OBV": 0.40,   # def_obv_w
-}
-
-
-# --------------------
-# Helpers
-# --------------------
-def get_category_weights(position: str) -> Dict[str, float]:
-    """Devuelve dict de pesos por categoría (Score_*) para la posición."""
-    return CATEGORY_WEIGHTS_BY_POSITION.get(position, {}).copy()
-
-
-def get_categories(position: str) -> List[str]:
-    """Devuelve lista ordenada de categorías (Score_*) para la posición."""
-    return list(get_category_weights(position).keys())
-
-
-def get_lateral_def_split() -> Dict[str, float]:
-    """Devuelve split interno para laterales (Exec/OBV)."""
-    return LATERAL_DEF_SPLIT.copy()
+def get_category_weights(position_key: str) -> Dict[str, float]:
+    """
+    Devuelve los pesos de categorías para una posición.
+    
+    Parameters
+    ----------
+    position_key : str
+        Nombre de la posición
+    
+    Returns
+    -------
+    Dict[str, float]
+        Diccionario de {categoria: peso}
+    """
+    return CATEGORY_WEIGHTS_BY_POSITION.get(position_key, {})
 
 
 def strip_score_prefix(cat: str) -> str:
-    """Convierte 'Score_Progresion' -> 'Progresion'."""
+    """
+    Quita el prefijo 'Score_' de nombres de categorías.
+    
+    Parameters
+    ----------
+    cat : str
+        Nombre de categoría (ej: 'Score_Progresion')
+    
+    Returns
+    -------
+    str
+        Nombre sin prefijo (ej: 'Progresion')
+    
+    Examples
+    --------
+    >>> strip_score_prefix('Score_Progresion')
+    'Progresion'
+    >>> strip_score_prefix('Score_BoxToBox')
+    'BoxToBox'
+    """
     return cat.replace("Score_", "", 1)
-

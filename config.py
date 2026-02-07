@@ -38,7 +38,7 @@ LOGO_PATH = ASSETS_DIR / "monterrey_logo.png"
 # Archivos de datos (actual - temporada única)
 # NOTA: Estos paths cambiarán cuando implementemos multi-temporada
 EVENTS_CSV = DATA_DIR / "events_2025_2026.csv"
-PER90_CSV = OUTPUTS_DIR / "all_players_complete_2025_2026.csv"
+# PER90_CSV = OUTPUTS_DIR / "all_players_complete_2025_2026.csv"
 
 
 # =============================================================================
