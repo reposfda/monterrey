@@ -16,6 +16,7 @@ import pandas as pd
 
 from .io import read_input
 from positions_config import normalize_group, sb_positions_for
+from config import Defaults
 
 
 class PositionScorer(ABC):
@@ -67,9 +68,9 @@ class PositionScorer(ABC):
     
     def __init__(
         self,
-        min_minutes: int = 450,
-        min_matches: int = 3,
-        flag_q: float = 0.75,
+        min_minutes: int = Defaults.MIN_MINUTES,
+        min_matches: int = Defaults.MIN_MATCHES,
+        flag_q: float = Defaults.FLAG_QUANTILE,
         verbose: bool = True
     ):
         """
