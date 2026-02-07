@@ -1,0 +1,542 @@
+team_name,player_name,minutes_played_percentage,player_annual_cost_percentage,talent_cost_utilization_per_player
+Tigres UANL,N. Guzmán,1.0,0.032,0.032
+Tigres UANL,J. Brunetta,0.92,0.022,0.02024
+Cruz Azul,É. Lira,0.97,0.036,0.03492
+Cruz Azul,K. Mier,0.97,0.02,0.0194
+Cruz Azul,W. Ditta,0.94,0.02,0.0188
+Toluca,F. Pereira,0.96,0.026,0.02496
+Pachuca,Eduardo Bauermann,1.0,0.049,0.049
+Pachuca,C. Moreno,1.0,0.016,0.016
+Tigres UANL,J. Aquino,0.84,0.026,0.02184
+Monterrey,G. Berterame,0.85,0.038,0.032299999999999995
+Club América,I. Reyes,0.87,0.015,0.013049999999999999
+Club América,L. Malagón,0.84,0.016,0.01344
+Club América,Á. Zendejas,0.84,0.002,0.00168
+Pachuca,A. Aceves,0.91,0.024,0.021840000000000002
+Cruz Azul,C. Rodríguez,0.83,0.038,0.03154
+Pumas UNAM,J. Caicedo,0.9,0.024,0.0216
+Cruz Azul,J. Sánchez,0.81,0.052,0.04212
+Tigres UANL,J. Purata,0.76,0.011,0.00836
+Juárez,S. Jurado,1.0,0.056,0.056
+Cruz Azul,C. Rotondi,0.8,0.022,0.0176
+Guadalajara,B. González,0.93,0.135,0.12555000000000002
+Club América,É. Sánchez,0.79,0.088,0.06952
+Toluca,M. Ruíz,0.81,0.016,0.012960000000000001
+Monterrey,G. Arteaga,0.76,0.026,0.01976
+Tigres UANL,F. Gorriarán,0.73,0.062,0.04526
+Necaxa,A. Palavecino,0.94,0.094,0.08836
+Necaxa,E. Unsain,0.93,0.023,0.02139
+Guadalajara,R. Rangel,0.9,0.014,0.0126
+Club América,Álvaro Fidalgo,0.77,0.007,0.00539
+Monterrey,J. Rodríguez,0.74,0.042,0.03108
+Club América,C. Borja,0.76,0.011,0.00836
+Pumas UNAM,P. Bennevendo,0.83,0.01,0.0083
+Toluca,A. Vega,0.78,0.03,0.0234
+Tigres UANL,D. Lainez,0.71,0.049,0.03479
+Juárez,D. García,0.94,0.021,0.01974
+Monterrey,S. Medina,0.73,0.015,0.01095
+Pumas UNAM,A. Carrasquilla,0.82,0.153,0.12546
+Toluca,J. Gallardo,0.77,0.055,0.04235
+Toluca,Paulinho,0.76,0.215,0.1634
+Pachuca,E. Montiel,0.81,0.013,0.01053
+Monterrey,Sergio Ramos,0.71,0.079,0.05609
+Necaxa,K. Rosero,0.88,0.019,0.01672
+Cruz Azul,I. Rivero,0.73,0.01,0.0073
+Pumas UNAM,Nathan Silva,0.79,0.037,0.02923
+Guadalajara,L. Romo,0.84,0.154,0.12936
+León,S. Reyes,0.9,0.069,0.06210000000000001
+León,S. Barreiro,0.89,0.02,0.0178
+Monterrey,Óliver Torres,0.69,0.096,0.06624
+Atlético San Luis,E. Águila,0.96,0.013,0.01248
+Tigres UANL,Rômulo,0.67,0.063,0.042210000000000004
+León,R. Echeverría,0.88,0.105,0.0924
+Cruz Azul,J. Paradela,0.7,0.08,0.055999999999999994
+Tijuana,J. Porozo,0.93,0.037,0.03441
+Atlético San Luis,J. Sanabria,0.93,0.009,0.008369999999999999
+Monterrey,Sergio Canales,0.67,0.132,0.08844
+Cruz Azul,Á. Sepúlveda,0.69,0.014,0.00966
+Cruz Azul,G. Piovi,0.69,0.01,0.0069
+Juárez,J. Rodríguez,0.86,0.069,0.059340000000000004
+Atlético San Luis,A. Sánchez,0.92,0.032,0.02944
+Santos Laguna,C. Acevedo,1.0,0.035,0.035
+Toluca,F. Romero,0.71,0.025,0.01775
+Mazatlán,F. Almada,0.95,0.031,0.029449999999999997
+Club América,S. Cáceres,0.68,0.022,0.01496
+Toluca,J. Angulo,0.69,0.018,0.012419999999999999
+Club América,R. Juárez,0.67,0.008,0.00536
+Club América,K. Álvarez,0.66,0.021,0.01386
+Pumas UNAM,Rubén Duarte,0.72,0.139,0.10008
+Tigres UANL,Joaquim,0.63,0.093,0.05859
+Atlético San Luis,S. Salles-Lamonge,0.88,0.032,0.02816
+Tigres UANL,N. Ibáñez,0.62,0.025,0.0155
+Tijuana,A. Rodríguez,0.88,0.006,0.00528
+Atlas,U. Durdevic,0.9,0.085,0.07650000000000001
+Juárez,A. Mayorga,0.8,0.061,0.0488
+Puebla,J. Fedorco,0.86,0.008,0.00688
+Cruz Azul,L. Faravelli,0.63,0.013,0.00819
+Necaxa,A. Peña,0.76,0.007,0.00532
+Monterrey,R. Chávez,0.61,0.064,0.03904
+Atlas,C. Vargas,0.88,0.045,0.039599999999999996
+Santos Laguna,J. Güémez,0.91,0.041,0.03731
+Mazatlán,N. Benedetti,0.87,0.068,0.059160000000000004
+Juárez,M. Mosquera,0.78,0.013,0.01014
+Santos Laguna,J. Abella,0.9,0.18,0.162
+Toluca,D. Barbosa,0.63,0.062,0.03906
+Guadalajara,D. Campillo,0.71,0.052,0.036919999999999994
+Atlético San Luis,Rodrigo Dourado,0.81,0.031,0.02511
+Atlético San Luis,R. Torres,0.81,0.011,0.00891
+Cruz Azul,J. Orozco,0.59,0.229,0.13511
+Juárez,Madson,0.74,0.06,0.044399999999999995
+Tigres UANL,J. Angulo,0.56,0.014,0.007840000000000001
+Santos Laguna,A. López,0.86,0.024,0.02064
+León,N. Fonseca,0.73,0.058,0.04234
+Atlético San Luis,Ó. Macías,0.78,0.032,0.024960000000000003
+Puebla,E. Gómez,0.78,0.122,0.09516
+Pumas UNAM,J. Ruvalcaba,0.63,0.011,0.0069299999999999995
+Tijuana,F. Boya,0.77,0.05,0.038500000000000006
+Tijuana,A. Gómez,0.77,0.005,0.00385
+Atlas,Gustavo Ferrareis,0.8,0.05,0.04000000000000001
+Tijuana,K. Castañeda,0.77,0.003,0.00231
+Necaxa,I. Rodríguez,0.69,0.054,0.037259999999999995
+Puebla,R. Marín,0.76,0.028,0.02128
+Pumas UNAM,G. Martínez,0.61,0.047,0.02867
+Toluca,B. Méndez,0.58,0.03,0.0174
+León,J. Rodríguez,0.7,0.203,0.1421
+Guadalajara,R. Alvarado,0.65,0.063,0.04095
+Mazatlán,J. Sierra,0.78,0.119,0.09282
+Necaxa,D. de Buen,0.67,0.095,0.06365
+Monterrey,L. Ocampos,0.53,0.127,0.06731000000000001
+Juárez,Guilherme Castilho,0.68,0.101,0.06868
+Atlas,Matheus Dória,0.77,0.0,0.0
+Pachuca,P. Pedraza,0.6,0.024,0.0144
+Club América,B. Rodríguez,0.54,0.023,0.01242
+Tigres UANL,O. Herrera,0.51,0.008,0.00408
+Querétaro,L. Rodríguez,0.84,0.117,0.09828
+Guadalajara,G. Sepúlveda,0.61,0.027,0.01647
+Cruz Azul,M. Bogusz,0.53,0.21,0.1113
+Tijuana,A. Preciado,0.71,0.024,0.01704
+Monterrey,J. Corona,0.51,0.049,0.024990000000000002
+Guadalajara,José Castillo Pérez,0.6,0.007,0.0042
+Atlas,R. Lozano,0.72,0.0,0.0
+Toluca,H. González,0.53,0.012,0.00636
+Atlas,D. González,0.71,0.012,0.00852
+Atlético San Luis,Miguel García,0.69,0.096,0.06624
+Juárez,R. Pizarro,0.63,0.044,0.027719999999999998
+Pumas UNAM,P. Vite,0.55,0.098,0.0539
+Tijuana,I. Tona,0.68,0.013,0.00884
+Tigres UANL,Á. Correa,0.48,0.133,0.06384000000000001
+Pachuca,S. Barreto,0.55,0.031,0.017050000000000003
+Pumas UNAM,S. Trigos,0.55,0.006,0.0033000000000000004
+Puebla,J. González,0.67,0.055,0.03685
+Atlas,G. Aguirre,0.7,0.011,0.007699999999999999
+Atlas,A. Rocha,0.69,0.046,0.03174
+León,F. Beltrán,0.61,0.139,0.08479
+Club América,R. Zúñiga,0.49,0.061,0.02989
+Monterrey,V. Guzmán,0.47,0.02,0.0094
+Tijuana,A. Vega,0.65,0.01,0.006500000000000001
+Tigres UANL,J. Garza,0.46,0.014,0.00644
+Pachuca,A. Bautista,0.53,0.006,0.00318
+Guadalajara,Efraín Álvarez,0.56,0.169,0.09464000000000002
+Mazatlán,L. Merolla,0.67,0.03,0.0201
+Mazatlán,B. Colula,0.67,0.044,0.02948
+Pachuca,O. Idrissi,0.52,0.063,0.032760000000000004
+Necaxa,C. Calderón,0.57,0.072,0.04103999999999999
+Santos Laguna,R. Sordo,0.69,0.024,0.01656
+Monterrey,N. Deossa,0.46,0.0,0.0
+Pachuca,J. Cádiz,0.52,0.038,0.01976
+León,S. Santos,0.58,0.003,0.00174
+Atlas,V. Ríos,0.65,0.005,0.0032500000000000003
+Toluca,L. García,0.47,0.002,0.00094
+Santos Laguna,Fran Villalba,0.67,0.095,0.06365
+Tijuana,R. Fernández,0.62,0.013,0.00806
+Pumas UNAM,Á. Padilla,0.5,0.0,0.0
+Querétaro,R. Bogarín,0.73,0.021,0.01533
+Pachuca,S. Rondón,0.5,0.0,0.0
+Puebla,E. Orona,0.61,0.012,0.00732
+Querétaro,F. Venegas,0.71,0.059,0.04189
+Monterrey,F. Ambríz,0.44,0.054,0.02376
+Necaxa,D. Cambindo,0.53,0.182,0.09646
+Juárez,J. García,0.55,0.021,0.011550000000000001
+Tijuana,G. Mora,0.58,0.005,0.0029
+Puebla,F. Moyano,0.58,0.036,0.020879999999999996
+León,R. Funes Mori,0.53,0.041,0.021730000000000003
+Querétaro,J. Gómez,0.68,0.017,0.01156
+Puebla,N. Díaz,0.57,0.038,0.02166
+Tijuana,Unai Bilbao,0.57,0.071,0.04046999999999999
+Atlético San Luis,João Pedro,0.56,0.091,0.050960000000000005
+Toluca,J. Domínguez,0.43,0.007,0.00301
+Atlas,E. Aguirre,0.58,0.097,0.05626
+Santos Laguna,B. Amione,0.6,0.034,0.0204
+Juárez,Ó. Estupiñán,0.51,0.1,0.051000000000000004
+Santos Laguna,E. Echeverría,0.59,0.007,0.00413
+Necaxa,P. Pérez,0.49,0.109,0.05341
+Necaxa,J. Rojas,0.49,0.03,0.0147
+Necaxa,T. Badaloni,0.49,0.038,0.018619999999999998
+Cruz Azul,G. Fernández,0.4,0.031,0.012400000000000001
+Cruz Azul,L. Romero,0.4,0.038,0.0152
+Pachuca,L. Quiñones,0.44,0.048,0.02112
+Tijuana,K. Escamilla,0.54,0.05,0.027000000000000003
+Monterrey,E. Andrada,0.39,0.0,0.0
+Mazatlán,R. Gutiérrez,0.56,0.027,0.015120000000000001
+Querétaro,Ó. Manzanárez,0.63,0.017,0.01071
+Santos Laguna,É. Gutiérrez,0.57,0.095,0.05415
+Pumas UNAM,P. Monroy,0.43,0.006,0.00258
+Querétaro,S. Homenchenko,0.62,0.017,0.01054
+Tijuana,R. Árciga,0.52,0.053,0.02756
+Santos Laguna,C. Dájome,0.56,0.069,0.03864000000000001
+Monterrey,I. Fimbres,0.37,0.002,0.00074
+Santos Laguna,K. Balanta,0.56,0.045,0.0252
+Querétaro,O. Mendoza,0.6,0.022,0.013199999999999998
+Juárez,Á. Zaldívar,0.47,0.033,0.01551
+Monterrey,S. Mele,0.36,0.034,0.012240000000000001
+Necaxa,E. Lara,0.45,0.01,0.0045000000000000005
+Pumas UNAM,K. Navas,0.41,0.195,0.07995
+Club América,V. Dávila,0.37,0.068,0.025160000000000002
+Guadalajara,É. Gutiérrez,0.43,0.023,0.00989
+León,I. Moreno,0.46,0.007,0.00322
+Club América,R. Aguirre,0.37,0.053,0.01961
+Club América,A. Gutiérrez,0.37,0.079,0.02923
+Puebla,A. Organista,0.49,0.02,0.0098
+Juárez,H. Martínez,0.45,0.043,0.01935
+Club América,R. Orquin,0.36,0.006,0.00216
+Pumas UNAM,R. Ergas,0.39,0.0,0.0
+Juárez,J. Murillo,0.45,0.044,0.019799999999999998
+León,P. Bellón,0.44,0.02,0.0088
+Guadalajara,R. González,0.41,0.0,0.0
+Querétaro,Á. Zapata,0.56,0.056,0.031360000000000006
+Atlético San Luis,A. Cruz,0.47,0.058,0.02726
+Pachuca,A. Domínguez,0.38,0.013,0.00494
+Puebla,J. Pachuca,0.46,0.005,0.0023
+Pumas UNAM,Á. Angulo,0.38,0.04,0.0152
+Mazatlán,A. Duarte,0.48,0.038,0.01824
+Santos Laguna,B. Barticciotto,0.49,0.012,0.00588
+Toluca,Luan,0.35,0.05,0.017499999999999998
+Tijuana,Vitinho,0.45,0.153,0.06885
+Tigres UANL,B. Parra,0.31,0.0,0.0
+Club América,A. Cervantes,0.33,0.07,0.023100000000000002
+Atlas,A. Mora,0.46,0.039,0.01794
+Guadalajara,A. González,0.38,0.002,0.00076
+Puebla,O. González,0.44,0.08,0.0352
+Mazatlán,J. Esquivel,0.45,0.079,0.03555
+Pachuca,L. Rodríguez,0.35,0.023,0.00805
+Puebla,A. Gamarra,0.43,0.006,0.00258
+Mazatlán,Fábio Gomes,0.44,0.0,0.0
+Club América,H. Martín,0.32,0.054,0.01728
+Puebla,J. Rivas,0.43,0.026,0.011179999999999999
+León,Ó. Jiménez,0.39,0.02,0.0078000000000000005
+Querétaro,G. Allison,0.5,0.019,0.0095
+Necaxa,T. Jacob,0.38,0.058,0.02204
+Monterrey,É. Aguirre,0.3,0.014,0.0042
+Pumas UNAM,I. Pussetto,0.34,0.0,0.0
+León,A. Alvarado,0.38,0.015,0.0057
+Pumas UNAM,P. Quispe,0.34,0.0,0.0
+León,S. Mendoza,0.38,0.0,0.0
+Tigres UANL,M. Flores,0.29,0.006,0.00174
+Toluca,E. López,0.31,0.0,0.0
+Pumas UNAM,Á. Azuaje,0.33,0.006,0.00198
+Querétaro,J. Julio,0.48,0.093,0.04464
+Puebla,R. Castillo,0.4,0.03,0.012
+Pachuca,V. Guzmán,0.32,0.043,0.01376
+León,J. Cortizo,0.37,0.059,0.02183
+Atlético San Luis,B. Galdames,0.4,0.016,0.0064
+Toluca,N. Castro,0.3,0.121,0.0363
+Santos Laguna,H. Ortega,0.43,0.012,0.00516
+Monterrey,L. Reyes,0.28,0.023,0.00644
+Guadalajara,A. Pulido,0.34,0.053,0.01802
+Cruz Azul,J. Márquez,0.29,0.014,0.004059999999999999
+León,Ó. García,0.36,0.003,0.00108
+Tijuana,S. Hernández,0.38,0.013,0.00494
+Puebla,L. Rey,0.38,0.019,0.00722
+Toluca,H. Herrera,0.29,0.023,0.00667
+Toluca,R. Morales,0.29,0.01,0.0029
+Mazatlán,J. Díaz,0.39,0.073,0.02847
+Querétaro,J. Perlaza,0.44,0.007,0.0030800000000000003
+Guadalajara,M. Tapias,0.32,0.037,0.01184
+Tijuana,D. Blanco,0.37,0.042,0.01554
+Guadalajara,M. Chávez,0.32,0.0,0.0
+Pachuca,C. Sánchez,0.3,0.019,0.005699999999999999
+Pachuca,B. García,0.3,0.021,0.0063
+Pachuca,John Kennedy,0.3,0.13,0.039
+Necaxa,R. Monreal,0.32,0.01,0.0032
+Club América,J. dos Santos,0.26,0.036,0.00936
+Juárez,J. Torres,0.33,0.058,0.01914
+Atlético San Luis,Juanpe,0.35,0.055,0.01925
+Puebla,F. Monárrez,0.35,0.074,0.025899999999999996
+Guadalajara,M. Gómez,0.3,0.002,0.0006
+Monterrey,L. Cárdenas,0.25,0.009,0.00225
+Toluca,Pau López,0.26,0.0,0.0
+Atlético San Luis,M. Klimowicz,0.34,0.029,0.00986
+Atlas,M. Nervo,0.35,0.0,0.0
+Juárez,D. Villalpando,0.32,0.024,0.00768
+Toluca,Helinho,0.26,0.158,0.04108
+Puebla,M. Ramírez,0.34,0.011,0.00374
+Puebla,E. Lozano,0.34,0.01,0.0034000000000000002
+Tijuana,A. Mejía,0.34,0.006,0.00204
+Tijuana,S. Nicholson,0.33,0.103,0.03399
+Guadalajara,C. Cowell,0.28,0.03,0.008400000000000001
+Guadalajara,A. Mozo,0.28,0.03,0.008400000000000001
+Guadalajara,R. Ledezma,0.28,0.025,0.007000000000000001
+Querétaro,E. Armenta,0.39,0.042,0.016380000000000002
+Pumas UNAM,R. López,0.26,0.01,0.0026000000000000003
+León,A. Frías,0.3,0.0,0.0
+Atlas,G. del Prete,0.33,0.16,0.05280000000000001
+Mazatlán,Y. Bárcenas,0.33,0.046,0.01518
+Tigres UANL,S. Córdova,0.22,0.027,0.00594
+Santos Laguna,J. Carrillo,0.34,0.009,0.00306
+Pachuca,Kenedy,0.25,0.13,0.0325
+Pumas UNAM,L. Suárez,0.25,0.0,0.0
+Querétaro,F. Russo,0.36,0.0,0.0
+Querétaro,P. Barrera,0.36,0.04,0.0144
+Puebla,E. Guerra,0.31,0.032,0.00992
+Querétaro,D. Reyes,0.36,0.034,0.012240000000000001
+Atlas,S. Hernández,0.31,0.0,0.0
+Atlético San Luis,Yan Phillipe,0.3,0.009,0.0026999999999999997
+León,D. Ramírez,0.27,0.006,0.0016200000000000001
+Necaxa,F. Rossano,0.26,0.014,0.00364
+Tigres UANL,U. Antuna,0.2,0.106,0.0212
+Puebla,B. Angulo León,0.29,0.0,0.0
+Toluca,A. Briseño,0.22,0.031,0.00682
+Pumas UNAM,A. Medina,0.23,0.019,0.00437
+Santos Laguna,S. Mariscal,0.31,0.007,0.00217
+León,I. Díaz,0.26,0.025,0.006500000000000001
+Guadalajara,S. Sandoval,0.24,0.002,0.00048
+Guadalajara,H. Camberos,0.24,0.002,0.00048
+Tigres UANL,I. López,0.2,0.009,0.0018
+Tigres UANL,Rafael Carioca,0.19,0.0,0.0
+Club América,D. Espinoza,0.2,0.003,0.0006000000000000001
+Juárez,R. Fulgencio,0.25,0.07,0.0175
+Monterrey,R. de la Rosa,0.2,0.039,0.0078000000000000005
+Atlas,A. González,0.28,0.189,0.05292000000000001
+Querétaro,A. Pérez,0.32,0.005,0.0016
+Tigres UANL,M. Farfan,0.19,0.063,0.01197
+Club América,I. Violante,0.2,0.035,0.007000000000000001
+León,Á. Estrada,0.25,0.006,0.0015
+Mazatlán,O. Moreno,0.28,0.0,0.0
+Santos Laguna,K. Palacios,0.29,0.066,0.01914
+Atlas,P. Ramírez,0.27,0.006,0.0016200000000000001
+Guadalajara,J. Hernández,0.22,0.101,0.02222
+Club América,D. Valdés,0.19,0.0,0.0
+Mazatlán,M. Laínez,0.27,0.074,0.01998
+Querétaro,R. Cisneros,0.3,0.0,0.0
+Pachuca,J. Berlanga,0.21,0.005,0.00105
+Guadalajara,O. Govea,0.22,0.027,0.00594
+Santos Laguna,A. Ocejo,0.27,0.0,0.0
+Mazatlán,A. Torres,0.26,0.061,0.01586
+Juárez,Ricardinho,0.23,0.024,0.005520000000000001
+Mazatlán,J. Hernández,0.25,0.0,0.0
+Atlas,C. Orrantía,0.25,0.048,0.012
+Mazatlán,J. Intriago,0.25,0.086,0.0215
+Tijuana,P. Ortíz,0.24,0.01,0.0024
+León,A. Guardado,0.22,0.0,0.0
+Guadalajara,R. Martínez,0.2,0.002,0.0004
+Mazatlán,S. Rodríguez,0.24,0.011,0.0026399999999999996
+Querétaro,C. Villanueva,0.27,0.034,0.00918
+Mazatlán,Samir,0.24,0.0,0.0
+León,A. Blanco,0.21,0.015,0.0031499999999999996
+Querétaro,José Hernández,0.27,0.015,0.00405
+Querétaro,J. Canale,0.27,0.0,0.0
+Atlético San Luis,Robson Bambu,0.23,0.124,0.02852
+Guadalajara,D. Aguirre,0.2,0.009,0.0018
+Monterrey,G. Sánchez,0.17,0.006,0.00102
+Mazatlán,S. Fierro,0.24,0.027,0.00648
+Atlas,Róber Pier,0.24,0.046,0.01104
+Club América,I. Lichnovsky,0.17,0.031,0.00527
+Pumas UNAM,L. Magallán,0.18,0.0,0.0
+Monterrey,H. Moreno,0.16,0.026,0.00416
+Necaxa,A. Andrade,0.2,0.006,0.0012000000000000001
+Santos Laguna,I. Govea,0.24,0.0,0.0
+Puebla,F. Waller,0.21,0.0,0.0
+Club América,R. Cota,0.16,0.012,0.00192
+Puebla,E. Gularte,0.21,0.0,0.0
+Puebla,J. Rodríguez,0.21,0.003,0.00063
+Santos Laguna,J. Pérez,0.23,0.0,0.0
+Atlas,M. García,0.22,0.039,0.00858
+Pachuca,J. Sigala,0.17,0.0,0.0
+Mazatlán,R. Meráz,0.22,0.0,0.0
+Mazatlán,L. Amarilla,0.21,0.0,0.0
+Querétaro,A. Ávila,0.24,0.07,0.016800000000000002
+Atlético San Luis,J. Domínguez,0.2,0.102,0.0204
+Mazatlán,A. Herrera,0.21,0.022,0.00462
+Querétaro,F. Lértora,0.23,0.071,0.01633
+Atlas,Jorge Rodríguez,0.2,0.0,0.0
+Mazatlán,Dudu Teodora,0.2,0.033,0.006600000000000001
+Santos Laguna,S. Muñóz,0.21,0.0,0.0
+Tigres UANL,V. Loroña,0.13,0.011,0.00143
+Tigres UANL,A. Gignac,0.13,0.113,0.014690000000000002
+Atlético San Luis,J. Suárez,0.19,0.009,0.00171
+León,V. Gauthier,0.17,0.019,0.0032300000000000002
+Cruz Azul,A. Montaño,0.14,0.037,0.005180000000000001
+León,E. Rigoni,0.17,0.0,0.0
+León,E. Rodríguez,0.17,0.013,0.00221
+Tijuana,R. Franco,0.18,0.005,0.0009
+Necaxa,Raúl Sánchez,0.16,0.097,0.01552
+Mazatlán,M. Zaleta,0.19,0.01,0.0019
+Atlético San Luis,Léo Bonatini,0.18,0.032,0.0057599999999999995
+Atlético San Luis,S. Pérez Bouquet,0.18,0.088,0.01584
+León,E. Ayón,0.16,0.035,0.005600000000000001
+Cruz Azul,O. Campos,0.13,0.093,0.01209
+Toluca,S. Simón,0.13,0.032,0.0041600000000000005
+Guadalajara,Y. Padilla,0.15,0.002,0.0003
+Querétaro,J. Piñuelas,0.2,0.0,0.0
+Atlas,M. Cóccaro,0.18,0.053,0.00954
+Pachuca,G. Togni,0.14,0.022,0.0030800000000000003
+Querétaro,J. Robles,0.19,0.0,0.0
+Necaxa,A. Oliveros,0.15,0.051,0.007649999999999999
+Club América,A. Saint-Maximin,0.12,0.161,0.01932
+Querétaro,F. González,0.19,0.027,0.00513
+Pachuca,E. Valencia,0.13,0.082,0.010660000000000001
+Tijuana,M. El Ghezouani,0.16,0.099,0.01584
+Necaxa,J. Alcántar,0.14,0.007,0.0009800000000000002
+Querétaro,J. Colmán,0.18,0.0,0.0
+Puebla,M. Jiménez,0.15,0.0,0.0
+Puebla,E. Navarro,0.15,0.0,0.0
+Tigres UANL,J. Vigón,0.1,0.024,0.0024000000000000002
+Mazatlán,J. García,0.15,0.036,0.005399999999999999
+Mazatlán,G. Adame,0.15,0.008,0.0012
+Querétaro,Jesús Hernández,0.16,0.015,0.0024
+Puebla,P. González,0.14,0.055,0.007700000000000001
+Pachuca,I. Hernández,0.11,0.006,0.00066
+Cruz Azul,A. Morales,0.1,0.004,0.0004
+Cruz Azul,G. Giakoumakis,0.1,0.0,0.0
+Mazatlán,Á. Leyva,0.14,0.01,0.0014000000000000002
+Santos Laguna,A. Lozano,0.14,0.195,0.027300000000000005
+Atlas,L. Flores,0.13,0.0,0.0
+Puebla,I. Moreno,0.12,0.005,0.0006
+Mazatlán,I. González,0.13,0.0,0.0
+Necaxa,E. Martínez,0.11,0.009,0.00099
+Atlas,A. Ramírez,0.12,0.009,0.0010799999999999998
+Santos Laguna,A. Santamaría,0.12,0.0,0.0
+Tigres UANL,G. Pizarro Demestri,0.08,0.0,0.0
+Santos Laguna,D. Medina,0.12,0.015,0.0018
+Necaxa,A. Palma,0.1,0.0,0.0
+Pachuca,J. López,0.09,0.059,0.00531
+Juárez,F. Nevárez,0.1,0.013,0.0013
+Atlético San Luis,D. Abitia,0.11,0.0,0.0
+Tijuana,Joe Corona,0.11,0.015,0.00165
+Guadalajara,T. Wilke,0.09,0.007,0.00063
+Juárez,J. Gónzalez,0.1,0.038,0.0038
+Pachuca,G. Cabral,0.08,0.047,0.00376
+Monterrey,T. Leone,0.07,0.0,0.0
+Club América,M. Vázquez,0.08,0.002,0.00016
+Pumas UNAM,A. Ramsey,0.08,0.105,0.0084
+Mazatlán,Á. Saavedra,0.1,0.008,0.0008
+Pumas UNAM,S. López,0.08,0.006,0.00048
+Querétaro,M. Carcelén,0.12,0.08,0.0096
+Querétaro,S. Hernández,0.12,0.015,0.0018
+Atlético San Luis,L. Nájera,0.1,0.0,0.0
+Toluca,M. Isaís,0.07,0.038,0.00266
+Pumas UNAM,J. Macías,0.08,0.047,0.00376
+Atlas,J. San Martín,0.1,0.0,0.0
+Puebla,C. Baltazar,0.09,0.039,0.0035099999999999997
+Toluca,F. Arce,0.07,0.022,0.0015400000000000001
+Monterrey,A. Martial,0.06,0.097,0.00582
+Mazatlán,S. Godínez,0.09,0.008,0.0007199999999999999
+Pachuca,Alemão,0.07,0.0,0.0
+Toluca,V. Arteaga,0.07,0.002,0.00014000000000000001
+León,D. Arcila,0.08,0.037,0.00296
+Necaxa,R. Cortéz,0.07,0.007,0.0004900000000000001
+Pumas UNAM,Á. Rico,0.07,0.006,0.00042000000000000007
+Necaxa,R. Sandoval,0.07,0.0,0.0
+Juárez,D. Ochoa,0.07,0.011,0.0007700000000000001
+Mazatlán,C. Castro,0.08,0.008,0.00064
+Tijuana,M. Ortega,0.08,0.0,0.0
+Atlético San Luis,C. López,0.08,0.013,0.00104
+Cruz Azul,A. Gudiño,0.06,0.01,0.0006
+Atlas,A. Sánchez,0.08,0.003,0.00024
+Pumas UNAM,R. Parra,0.06,0.005,0.0003
+Pachuca,S. Hernández,0.06,0.006,0.00035999999999999997
+Santos Laguna,R. Prieto,0.08,0.005,0.0004
+Santos Laguna,T. Jiménez,0.08,0.0,0.0
+León,C. Cisneros,0.06,0.051,0.00306
+Tijuana,J. Fernández,0.07,0.013,0.00091
+Puebla,W. Portales,0.07,0.005,0.00035000000000000005
+Querétaro,A. de María y Campos,0.08,0.0,0.0
+Pachuca,A. Hurtado,0.05,0.0,0.0
+Puebla,B. Garnica,0.06,0.096,0.0057599999999999995
+León,Ó. Villa,0.06,0.022,0.0013199999999999998
+Querétaro,E. Partida,0.07,0.017,0.0011900000000000003
+Pachuca,William Carvalho,0.05,0.082,0.0041
+Querétaro,Carlo Adriano,0.07,0.017,0.0011900000000000003
+Guadalajara,I. Brizuela,0.05,0.018,0.0009
+Puebla,D. Paz,0.06,0.0,0.0
+Atlas,J. Serrato,0.06,0.0,0.0
+Toluca,S. Aceves,0.04,0.0,0.0
+Toluca,O. Virgen,0.04,0.002,8e-05
+Querétaro,M. Coronel,0.07,0.0,0.0
+Cruz Azul,C. Jiménez,0.04,0.002,8e-05
+Monterrey,J. Moxica,0.04,0.0,0.0
+Tigres UANL,D. Sánchez,0.04,0.049,0.00196
+Santos Laguna,F. Fagúndez,0.06,0.027,0.00162
+Pumas UNAM,U. Rivas,0.04,0.029,0.00116
+Atlético San Luis,J. Marchand,0.05,0.022,0.0011
+Juárez,E. López,0.05,0.0,0.0
+Atlético San Luis,D. Guillén,0.05,0.011,0.00055
+Club América,N. Araújo,0.04,0.028,0.0011200000000000001
+Necaxa,A. Montes,0.04,0.0,0.0
+Juárez,D. Valoyes,0.04,0.054,0.00216
+Tijuana,J. Reyes,0.05,0.013,0.00065
+Pachuca,I. Luna,0.03,0.002,6e-05
+Atlas,J. Guzmán,0.04,0.0,0.0
+Puebla,S. Olmedo,0.04,0.0,0.0
+Cruz Azul,J. Rodarte,0.03,0.0,0.0
+Atlas,C. Robles,0.04,0.052,0.00208
+Mazatlán,A. Alcaráz,0.04,0.022,0.0008799999999999999
+Atlas,C. Ramos,0.04,0.005,0.0002
+Guadalajara,E. García,0.03,0.007,0.00021
+Santos Laguna,H. Holguín,0.04,0.002,8e-05
+Mazatlán,R. Rodríguez,0.04,0.023,0.00092
+Pumas UNAM,J. Flores,0.03,0.0,0.0
+Pumas UNAM,M. Paul,0.03,0.0,0.0
+Puebla,Á. de la Rosa,0.04,0.0,0.0
+Atlético San Luis,J. Murillo,0.04,0.0,0.0
+Santos Laguna,G. Muñoz,0.03,0.0,0.0
+Querétaro,F. Valenzuela,0.03,0.042,0.00126
+Tijuana,L. Vargas,0.03,0.0,0.0
+Atlas,I. Domínguez,0.03,0.0,0.0
+Tijuana,F. Contreras,0.03,0.005,0.00015
+Monterrey,M. Rodríguez,0.02,0.008,0.00016
+Toluca,A. Álvarez,0.02,0.012,0.00024
+León,P. Medina,0.02,0.011,0.00021999999999999998
+Tigres UANL,O. Rodríguez,0.02,0.035,0.0007000000000000001
+Tijuana,E. Bullaude,0.02,0.142,0.0028399999999999996
+Cruz Azul,K. Velázquez,0.02,0.0,0.0
+Atlético San Luis,C. Mares,0.02,0.0,0.0
+Pumas UNAM,R. Galindo,0.02,0.0,0.0
+Cruz Azul,M. Levy,0.02,0.0,0.0
+Cruz Azul,B. Gamboa,0.02,0.002,4e-05
+Pumas UNAM,S. Venegas,0.02,0.0,0.0
+Puebla,J. Cortés,0.02,0.0,0.0
+Tijuana,J. González,0.02,0.0,0.0
+Querétaro,B. Rubio,0.02,0.0,0.0
+Puebla,Á. Araos,0.02,0.032,0.00064
+Pachuca,J. Brígido,0.01,0.0,0.0
+Juárez,L. Silva,0.02,0.0,0.0
+Tijuana,F. Madrigal,0.01,0.0,0.0
+Puebla,Á. Robles,0.01,0.002,2e-05
+Pumas UNAM,E. Villaseñor,0.01,0.0,0.0
+Querétaro,L. Gutiérrez,0.02,0.013,0.00026
+Tijuana,A. Valenzuela,0.01,0.0,0.0
+Juárez,S. Abdullahi,0.01,0.0,0.0
+Mazatlán,R. Camacho,0.01,0.0,0.0
+Atlético San Luis,F. Barajas,0.01,0.036,0.00035999999999999997
+Monterrey,L. Basulto,0.01,0.0,0.0
+Puebla,L. Cavallini,0.01,0.071,0.0007099999999999999
+Cruz Azul,C. Vargas,0.01,0.007,7.000000000000001e-05
+Atlético San Luis,J. Villal,0.01,0.009,8.999999999999999e-05
+Club América,D. Arriaga,0.01,0.0,0.0
+Club América,R. Sánchez,0.01,0.088,0.0008799999999999999
+Juárez,A. Méndez,0.01,0.0,0.0
+Atlético San Luis,J. González,0.01,0.035,0.00035000000000000005
+Santos Laguna,P. Aquino,0.01,0.0,0.0
+Querétaro,B. El-mesmari,0.01,0.018,0.00017999999999999998
+Pumas UNAM,M. Torres,0.01,0.0,0.0
+Tigres UANL,F. Ordóñez,0.01,0.004,4e-05
+Monterrey,F. Valenzuela,0.01,0.0,0.0
+Cruz Azul,A. García,0.01,0.005,5e-05
+Santos Laguna,R. Rubio,0.01,0.0,0.0
+Puebla,M. González,0.01,0.08,0.0008
+Juárez,D. Martínez,0.01,0.043,0.00043
+Necaxa,D. Gómez,0.01,0.009,8.999999999999999e-05
+Juárez,J. Álvarez,0.01,0.0,0.0
+Atlético San Luis,João Lourenço,0.01,0.0,0.0
+Tijuana,Jesús Corona,0.01,0.039,0.00039
