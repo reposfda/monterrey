@@ -110,6 +110,7 @@ with st.spinner("Calculando scoring..."):
             min_minutes=min_minutes,
             min_matches=min_matches,
             selected_teams=selected_teams,
+            cat_weights=cat_w,   # 👈 FIX CLAVE
         )
     except ValueError:
         st.warning(f"No hay jugadores de {pos} que cumplan los filtros actuales.")
@@ -178,17 +179,16 @@ cols_show = base_cols + cat_cols_pretty
 # APLICAR PESOS DE CATEGORÍAS (WHAT-IF) -> Score_Ajustado
 # =============================================================================
 
-def _to_pretty_key(score_key: str) -> str:
-    """Convierte Score_AccionDefensiva -> Accion Defensiva"""
-    k = score_key.replace("Score_", "").replace("score_", "").replace("_", " ").strip().title()
-    return k
+# Mapa real Score_X -> Label bonito (desde role_config)
+macro = get_macro_config(pos)  # [(Score_x, "Label"), ...]
+score_to_label = {score_col: label for score_col, label in macro}
 
-# Construir pares (pretty_col, weight) que existan en scores_disp
 pairs = []
-for k, w in (cat_w or {}).items():
-    pretty_k = _to_pretty_key(k)
-    if pretty_k in scores_disp.columns:
-        pairs.append((pretty_k, float(w)))
+for score_key, w in (cat_w or {}).items():
+    label = score_to_label.get(score_key)
+    if label and label in scores_disp.columns:
+        pairs.append((label, float(w)))
+
 
 # Si tenemos 2+ pesos válidos, calculamos Score_Ajustado
 if len(pairs) >= 2:

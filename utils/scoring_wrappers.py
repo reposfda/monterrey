@@ -123,6 +123,7 @@ def compute_scoring_from_df(
     min_minutes: int,
     min_matches: int,
     selected_teams: list[str] | None = None,
+    cat_weights: dict | None = None,   # 👈 FIX
 ) -> pd.DataFrame:
     """Wrapper único de scoring para todas las posiciones."""
     df = df_base.copy()
