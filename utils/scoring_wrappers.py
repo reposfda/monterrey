@@ -22,10 +22,10 @@ from scoring.forwards import run_extremo_scoring, run_delantero_scoring
 
 PROFILE_LABELS = {
     "Golero": {
-        "Score_Effectiveness": "Shot Stopper",
+        "Score_Effectiveness": "Atajador",
         "Score_Area_Domination": "Dominante",
-        "Score_Foot_Play": "Con Pies",
-        "Score_Outside_Box": "Sweeper",
+        "Score_Foot_Play": "Juego de Pies",
+        "Score_Outside_Box": "Libero",
     },
     "Zaguero": {
         "Score_AccionDefensiva": "Acción Def",
