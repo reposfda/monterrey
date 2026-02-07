@@ -722,13 +722,3 @@ pip install -r requirements.txt  # Reinstalar dependencias
 - Refrescar la página (F5)
 
 ---
-
-## 📝 Licencia
-
-Este proyecto es propiedad del Club de Fútbol Monterrey. Todos los derechos reservados.
-
----
-
-## 👥 Contacto
-
-Para soporte técnico o consultas sobre el proyecto, contactar al equipo de análisis de datos del club.
