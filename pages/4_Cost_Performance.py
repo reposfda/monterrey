@@ -93,13 +93,13 @@ st.markdown(
 # DATA PATHS (DINÁMICO POR POSICIÓN)
 # =========================================================
 POSITION_FILES = {
-    "Arqueros": "data/scores/score_cost/arq_score_cost.csv",
-    "Defensores": "data/scores/score_cost/def_score_cost.csv",
-    "Laterales": "data/scores/score_cost/lat_score_cost.csv",
-    "Volantes": "data/scores/score_cost/vol_score_cost.csv",
-    "Interiores": "data/scores/score_cost/int_score_cost.csv",
-    "Extremos": "data/scores/score_cost/ext_score_cost.csv",
-    "Delanteros": "data/scores/score_cost/del_score_cost.csv",
+    "Golero": "data/scores/score_cost/arq_score_cost.csv",
+    "Zaguero": "data/scores/score_cost/def_score_cost.csv",
+    "Lateral": "data/scores/score_cost/lat_score_cost.csv",
+    "Volante": "data/scores/score_cost/vol_score_cost.csv",
+    "Interior/Mediapunta": "data/scores/score_cost/int_score_cost.csv",
+    "Extremo": "data/scores/score_cost/ext_score_cost.csv",
+    "Delantero": "data/scores/score_cost/del_score_cost.csv",
 }
 
 
