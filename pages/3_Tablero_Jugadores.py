@@ -328,8 +328,8 @@ filters = sidebar_filters(
 
 pos = filters["position"]
 min_minutes = int(filters["min_minutes"])
+min_matches = int(filters.get("min_matches", Defaults.MIN_MATCHES))
 selected_teams = filters.get("teams", [])
-min_matches = Defaults.MIN_MATCHES  # ✅ Ahora viene de config
 
 # =============================================================================
 # SCORING (COHORTE FILTRADA)

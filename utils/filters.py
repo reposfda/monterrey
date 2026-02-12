@@ -31,6 +31,7 @@ def sidebar_filters(
     # -------------------------
     if show_minutes:
         out["min_minutes"] = st.sidebar.slider("Minutos mínimos", 0, 3000, 450, step=50)
+        out["min_matches"] = st.sidebar.slider("Partidos mínimos", 0, 45, 5, step=1)
 
     # -------------------------
     # Equipo
