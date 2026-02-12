@@ -101,7 +101,7 @@ filters = sidebar_filters(
 )
 
 pos = filters["position"]
-min_minutes = int(filters["min_minutes"], Defaults.MIN_MINUTES)
+min_minutes = int(filters["min_minutes"])
 min_matches = int(filters.get("min_matches", Defaults.MIN_MATCHES))
 selected_teams = filters.get("teams", [])
 cat_w = filters.get("cat_weights", {})
