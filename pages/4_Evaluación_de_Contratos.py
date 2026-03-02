@@ -230,16 +230,16 @@ rel_diff = np.nan
 if np.isfinite(current_cs) and np.isfinite(fair_cs) and fair_cs > 0:
     rel_diff = (current_cs - fair_cs) / fair_cs  # -0.28 => 28% menos
 
-    if rel_diff <= -0.30:
+    if rel_diff <= -0.50:
         label, symbol, symbol_color = "Muy Buena", "▲", "#22c55e"
     elif rel_diff < -NEUTRAL_BAND:
         label, symbol, symbol_color = "Buena", "▲", "#22c55e"
     elif abs(rel_diff) <= NEUTRAL_BAND:
         label, symbol, symbol_color = "Neutral", "=", "rgba(255,255,255,0.75)"
     elif rel_diff < 0.30:
-        label, symbol, symbol_color = "Mala", "▼", "#ef4444"
+        label, symbol, symbol_color = "Justificable", "▼", "#ef4444"
     else:
-        label, symbol, symbol_color = "Muy Mala", "▼", "#ef4444"
+        label, symbol, symbol_color = "Revisable", "▼", "#ef4444"
 
 eff_sentence = ""
 if np.isfinite(rel_diff):
