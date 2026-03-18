@@ -406,6 +406,57 @@ df["type"] = df["type"].astype(str)
 df["_player_id"] = get_player_id_series(df)
 df["_player_name"] = get_player_name_series(df)
 
+# ====== FIX: Corregir eventos "Own Goal For" ======
+print("\n" + "="*70)
+print("🔧 CORRECCIÓN: Eventos 'Own Goal For'")
+print("="*70)
+
+if 'type' in df.columns and 'match_id' in df.columns and 'team' in df.columns:
+    own_goal_mask = df['type'] == 'Own Goal For'
+    n_own_goals = own_goal_mask.sum()
+    
+    print(f"\n📊 Eventos 'Own Goal For' encontrados: {n_own_goals}")
+    
+    if n_own_goals > 0:
+        print(f"🔍 Analizando equipos por partido...")
+        
+        # Crear diccionario: match_id -> [equipo1, equipo2]
+        match_teams = {}
+        for match_id in df['match_id'].unique():
+            teams = df[df['match_id'] == match_id]['team'].dropna().unique()
+            if len(teams) >= 2:
+                match_teams[match_id] = list(teams)[:2]
+        
+        print(f"✓ Partidos con 2 equipos: {len(match_teams)}")
+        print(f"🔄 Corrigiendo eventos...")
+        
+        # Corregir cada evento Own Goal For
+        corrections_made = 0
+        for idx in df[own_goal_mask].index:
+            match_id = df.loc[idx, 'match_id']
+            current_team = df.loc[idx, 'team']
+            
+            teams = match_teams.get(match_id)
+            if teams and len(teams) == 2:
+                # Cambiar al equipo OPUESTO
+                if current_team == teams[0]:
+                    df.loc[idx, 'team'] = teams[1]
+                    corrections_made += 1
+                elif current_team == teams[1]:
+                    df.loc[idx, 'team'] = teams[0]
+                    corrections_made += 1
+        
+        print(f"✅ Eventos corregidos: {corrections_made}/{n_own_goals}")
+        
+        if corrections_made < n_own_goals:
+            print(f"⚠️  {n_own_goals - corrections_made} eventos no pudieron corregirse")
+    else:
+        print("✓ No hay eventos 'Own Goal For' para corregir")
+else:
+    print("⚠️  Columnas necesarias no encontradas. Saltando corrección.")
+
+print("="*70 + "\n")
+
 # ============= EXTRAER COORDENADAS X, Y DESDE 'location' =============
 print("\n📍 Extrayendo coordenadas desde columna 'location'...")
 
