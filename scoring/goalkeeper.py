@@ -47,7 +47,7 @@ class GoalkeeperScorer(PositionScorer):
             ],
             "Score_Foot_Play": [
                 ("gk_pass_obv_per90", 0.40, False),
-                ("gk_long_ball_pct", 0.20, False),
+                ("gk_long_ball_pct", 0.20, True),
                 ("gk_pressured_passes_def_third_per90", 0.20, False),
                 ("gk_pressured_passes_def_third_completion_pct", 0.20, False),
             ],
