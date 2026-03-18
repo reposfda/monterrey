@@ -9,6 +9,8 @@ Permite:
 - Comparar con promedio u otro jugador
 - Radar de categorías del rol (alineado verticalmente)
 - Lollipop de métricas detalladas (siempre visible)
+
+FIX APLICADO: Inversión de métricas con inv=True en lollipop (ej: gk_long_ball_pct)
 """
 from __future__ import annotations
 
@@ -124,7 +126,6 @@ def safe_float2(x):
         return ""
 
 
-# ✅ NUEVAS FUNCIONES DEL COMPAÑERO (Alineación vertical)
 def build_lollipop_inputs(
     *,
     df_base: pd.DataFrame,
@@ -217,6 +218,12 @@ def build_lollipop_inputs(
             continue
 
         p = pct_rank_0_100(s0)
+        
+        # ✅ FIX: Invertir percentil si inv=True (ej: gk_long_ball_pct)
+        # Mayor valor crudo = peor → invertir para que menor % = mejor percentil
+        if inv:
+            p = 100.0 - p
+        
         v = p.loc[player_idx]
         if pd.isna(v):
             continue
@@ -252,6 +259,11 @@ def build_lollipop_inputs(
                 if s0.dropna().empty:
                     continue
                 p2 = pct_rank_0_100(s0)
+                
+                # ✅ FIX: Aplicar también para jugador comparado
+                if inv:
+                    p2 = 100.0 - p2
+                
                 v2 = p2.loc[second_idx]
                 if pd.isna(v2):
                     continue
