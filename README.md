@@ -721,7 +721,7 @@ En caso de querer cambiar el método de ponderación, se lo debe hacer modifican
 
 
 En todos los casos, si sucede que un jugador haya disputado sólo una de las temporadas consideradas, se utiliza directamente el score de esa temporada, sin ponderar.
-Este código devuelve como output un único archivo csv por posición que combina el score de las temporadas seleccionadas en un único ‘Overall_Score_Final’, y lo guarda en data/scores/score_consolidado/{nombre_del_metodo_aplicado} bajo el nombre `score_{pos}_final_{metodo_utilizado}.csv`
+Este código devuelve como output un único archivo csv por posición que combina el score de las temporadas seleccionadas en un único ‘Overall_Score_Final’, y lo guarda en data/scores/score_consolidado/ bajo el nombre `score_{pos}_final_{metodo_utilizado}.csv`
 
 #### Paso 2.B: 
 Para poder obtener el archivo final `{posicion}_scores_cost.csv` se necesita combinar los archivos de scores resultantes del paso 2.A con los datos económicos de los jugadores, los cuales provienen de dos fuentes:
@@ -729,7 +729,7 @@ Para poder obtener el archivo final `{posicion}_scores_cost.csv` se necesita com
 ##### Paso 2.B.1:
 Transfermarkt -> Para obtener el precio de transferencia de los jugadores (lo que el club pagó para adquirir el jugador).  
 
-Esto se hace con el script `scrap_transfers_from_tmkt.py`. Lo único a considerar en este caso es que hay que darle el rango de años sobre el cual se quiere que se extraigan las transferencias. Eso se hace desde el mismo config.py donde se cambian las otras variables de actualización. Ahí está explicado cómo considerar los años según la manera en que lo toma Transfermarkt. El resultado de este script es un archivo csv con las transferencias realizadas por cada club en cada ventana de pases de los años considerados, que son guardados en la carpeta `data/transfers/`. En resúmen, para actualizar data de Transfermarkt:
+Esto se hace con el script `scrap_transfers_from_tmkt.py`. Lo único a considerar en este caso es que hay que darle el rango de años sobre el cual se quiere que se extraigan las transferencias. Eso se hace desde el mismo `config.py` donde se cambian las otras variables de actualización. Ahí está explicado cómo considerar los años según la manera en que lo toma Transfermarkt. El resultado de este script es un archivo csv con las transferencias realizadas por cada club en cada ventana de pases de los años considerados, que son guardados en la carpeta `data/transfers/`. En resúmen, para actualizar data de Transfermarkt:
 
 Editar `config.py`:
 ```python
