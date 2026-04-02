@@ -699,11 +699,11 @@ El proceso de consolidar los scores en una única temporada comienza a partir de
 ### Paso 2: Información consolidada de los scores (archivos {posicion}_scores_cost.csv).
 
 #### Paso 2.A:
-Una vez que se tienen los archivos de scores de cada posición en cada temporada (los archivos mencionados en el Paso 1), se deben consolidar en un sólo archivo. Para eso se utiliza el script `consolidar_scores.py`. 
+Una vez que se tienen los archivos de scores de cada posición en cada temporada (los archivos mencionados en el Paso 1), se deben consolidar en un sólo archivo. Para eso se utiliza el script `consolidar_scores.py`.  
+Desde la raíz del repo, ejecutar el siguiente comando:
 
 ```bash
-cd core
-python consolidar_scores.py
+python -m core.consolidar_scores
 ```
 
 Este script toma como input los archivos {posicion}_score_{temporada}.csv y los combina en un único score final utilizando uno de varios métodos disponibles.  
