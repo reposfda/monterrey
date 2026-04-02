@@ -1,0 +1,28 @@
+club_name,player_name,gross_salary_per_week,gross_salary_per_year,gross_bonus_per_year,total_gross_salary,signed,contract_expiration,years_remaining,gross_salary_remaining,position,position_detailed,player_age,status
+America,Allan Saint‑Maximin,"$ 86,538","$ 4,500,000","$ 680,000","$ 5,180,000","Aug 12, 2025","Jun 30, 2027",2,"$ 9,000,000",F,LW,28,Starter
+America,Henry Martin,"$ 57,692","$ 3,000,000","$ 450,000","$ 3,450,000","May 10, 2024","Jun 30, 2027",2,"$ 6,000,000",F,CF,32,Reserve
+America,Érick Sánchez,"$ 52,885","$ 2,750,000","$ 690,000","$ 3,440,000","Jul 1, 2024","Jun 30, 2028",3,"$ 8,250,000",M,DM,25,Starter
+America,Rodrigo Aguirre,"$ 38,462","$ 2,000,000","$ 500,000","$ 2,500,000","Jul 18, 2024","Jun 30, 2027",2,"$ 4,000,000",F,CF,30,Reserve
+America,Jonathan dos Santos,"$ 38,462","$ 2,000,000","$ 300,000","$ 2,300,000","Jan 1, 2022","Jun 30, 2026",1,"$ 2,000,000",M,DM,35,Reserve
+America,Víctor Dávila,"$ 28,846","$ 1,500,000","$ 380,000","$ 1,880,000","Sep 15, 2024","Jun 30, 2027",2,"$ 3,000,000",F,CF,27,Reserve
+America,Néstor Araujo,"$ 27,692","$ 1,440,000","$ 360,000","$ 1,800,000","Jul 1, 2022","Jun 30, 2025",1,"$ 1,440,000",D,CB,34,Reserve
+America,Javairô Dilrosun,"$ 23,077","$ 1,200,000","$ 300,000","$ 1,500,000","Feb 2, 2024","Dec 31, 2026",1,"$ 1,200,000",F,LW,27,Reserve
+America,Brian Rodríguez,"$ 23,077","$ 1,200,000","$ 300,000","$ 1,500,000","Oct 21, 2025","Jun 30, 2029",4,"$ 4,800,000",F,LW,25,Reserve
+America,Alan Cervantes,"$ 23,077","$ 1,200,000","$ 300,000","$ 1,500,000","Jul 15, 2024","Dec 31, 2025",1,"$ 1,200,000",M,DM,27,Starter
+America,Sebastián Cáceres,"$ 21,538","$ 1,120,000","$ 280,000","$ 1,400,000","Mar 22, 2024","Jun 30, 2027",2,"$ 2,240,000",D,CB,26,Reserve
+America,José Raúl Zúñiga,"$ 21,538","$ 1,120,000","$ 280,000","$ 1,400,000","Jul 13, 2025","Jun 30, 2026",1,"$ 1,120,000",F,CF,31,Starter
+America,Kevin Álvarez,"$ 20,769","$ 1,080,000","$ 270,000","$ 1,350,000","Jul 1, 2023","Jun 30, 2027",2,"$ 2,160,000",D,RB,26,Starter
+America,Igor Lichnovsky,"$ 20,769","$ 1,080,000","$ 270,000","$ 1,350,000","Jul 18, 2024","Jun 30, 2027",2,"$ 2,160,000",D,CB,31,Reserve
+America,Luis Malagón,"$ 16,346","$ 850,000","$ 190,000","$ 1,060,000","Mar 23, 2024","Jun 30, 2027",2,"$ 1,700,000",K,GK,28,Starter
+America,Israel Reyes,"$ 14,615","$ 760,000","$ 190,000","$ 950,000","Jan 1, 2023","Dec 31, 2026",1,"$ 760,000",D,CB,25,Starter
+America,Alexis Gutiérrez,"$ 12,308","$ 640,000","$ 160,000","$ 800,000","Jun 25, 2025","Jun 30, 2026",1,"$ 640,000",M,CM,25,Starter
+America,Rodolfo Cota,"$ 12,308","$ 640,000","$ 160,000","$ 800,000","Jul 1, 2025","Jun 30, 2026",1,"$ 640,000",K,GK,38,Reserve
+America,Cristián Borja,"$ 10,769","$ 560,000","$ 140,000","$ 700,000","Jul 19, 2024","Jun 30, 2026",1,"$ 560,000",D,LB,32,Starter
+America,Isaías Violante,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","Nov 14, 2024","Jun 30, 2028",3,"$ 1,260,000",F,LW,21,Reserve
+America,Ramón Juárez,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","May 17, 2024","Jun 30, 2027",2,"$ 840,000",D,CB,24,Starter
+America,Álvaro Fidalgo,"$ 6,923","$ 360,000","$ 90,000","$ 450,000","Jul 1, 2021","Jun 30, 2026",1,"$ 360,000",M,CM,28,Reserve
+America,Ralph Orquin,"$ 5,769","$ 300,000","$ 80,000","$ 380,000","Jul 1, 2023","Jun 30, 2026",1,"$ 300,000",D,LB,22,Reserve
+America,Santiago Naveda,"$ 3,846","$ 200,000","$ 50,000","$ 250,000","Jan 1, 2021","Jun 30, 2026",1,"$ 180,000",M,DM,24,Reserve
+America,Dagoberto Espinoza,"$ 2,885","$ 150,000","$ 40,000","$ 190,000","Jul 1, 2024","Jun 30, 2026",1,"$ 150,000",D,RB,21,Reserve
+America,Miguel Vázquez,"$ 1,731","$ 90,000","$ 20,000","$ 110,000","Jul 1, 2024","Jun 30, 2026",1,"$ 90,000",D,CB,21,Reserve
+America,Alejandro Zendejas,"$ 1,538","$ 80,000","$ 20,000","$ 100,000","Jan 17, 2022","Jun 30, 2026",1,"$ 80,000",F,RW,27,Starter

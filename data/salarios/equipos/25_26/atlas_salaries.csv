@@ -1,0 +1,26 @@
+club_name,player_name,gross_salary_per_week,gross_salary_per_year,gross_bonus_per_year,total_gross_salary,signed,contract_expiration,years_remaining,gross_salary_remaining,position,position_detailed,player_age,status
+Atlas,Matías Cóccaro,"$ 15,385","$ 800,000","$ 120,000","$ 920,000","Jan 4, 2025","Dec 31, 2025",1,"$ 800,000",F,CF,27,Reserve
+Atlas,Mauro Manotas,"$ 13,846","$ 720,000","$ 180,000","$ 900,000","Jul 1, 2022","Jun 30, 2026",1,"$ 720,000",F,CF,30,Reserve
+Atlas,Carlos Robles,"$ 13,846","$ 720,000","$ 180,000","$ 900,000","Jan 1, 2023","Jun 30, 2026",1,"$ 720,000",D,CB,25,Reserve
+Atlas,Gustavo Ferrareis,"$ 13,462","$ 700,000","$ 180,000","$ 880,000","Jul 3, 2025","Jun 30, 2027",2,"$ 1,400,000",D,RB,29,Starter
+Atlas,Uros Djurdjevic,"$ 12,500","$ 650,000","$ 160,000","$ 810,000","Jul 16, 2024","Jun 30, 2027",2,"$ 1,300,000",F,CF,31,Starter
+Atlas,Gustavo del Prete,"$ 12,308","$ 640,000","$ 160,000","$ 800,000","Jan 1, 2025","Jun 30, 2026",1,"$ 640,000",F,CF,29,Reserve
+Atlas,Aldo Rocha,"$ 12,308","$ 640,000","$ 160,000","$ 800,000","Jan 1, 2021","Jun 30, 2026",1,"$ 640,000",M,DM,32,Reserve
+Atlas,Róber Pier,"$ 12,308","$ 640,000","$ 160,000","$ 800,000","Jul 6, 2025","Jun 30, 2026",1,"$ 640,000",D,CB,30,Reserve
+Atlas,Arturo González,"$ 12,308","$ 640,000","$ 160,000","$ 800,000","Jul 16, 2025","Jun 30, 2026",1,"$ 640,000",F,LW,31,Reserve
+Atlas,Dória,"$ 12,115","$ 630,000","$ 160,000","$ 790,000","Jul 8, 2024","Jun 30, 2027",2,"$ 1,260,000",D,CB,30,Starter
+Atlas,Camilo Vargas,"$ 11,923","$ 620,000","$ 160,000","$ 780,000","Apr 5, 2022","Dec 31, 2026",1,"$ 620,000",K,GK,36,Starter
+Atlas,Eduardo Aguirre,"$ 10,769","$ 560,000","$ 140,000","$ 700,000","Jul 1, 2024","Jun 30, 2026",1,"$ 560,000",F,CF,27,Reserve
+Atlas,Adrián Mora,"$ 10,385","$ 540,000","$ 140,000","$ 680,000","Jun 15, 2025","Jun 30, 2026",1,"$ 540,000",D,CB,28,Starter
+Atlas,Mateo García,"$ 10,385","$ 540,000","$ 140,000","$ 680,000","Jul 1, 2023","Jun 30, 2027",2,"$ 1,080,000",F,RW,29,Starter
+Atlas,Carlos Orrantía,"$ 6,731","$ 350,000","$ 90,000","$ 440,000","Jan 1, 2025","Jun 30, 2026",1,"$ 350,000",D,RB,34,Reserve
+Atlas,Diego González,"$ 3,269","$ 170,000","$ 40,000","$ 210,000","Jan 2, 2025","Dec 31, 2025",1,"$ 170,000",F,RW,22,Starter
+Atlas,José Lozano,"$ 3,269","$ 170,000","$ 40,000","$ 210,000","Jul 1, 2019","Jun 30, 2026",1,"$ 170,000",D,LB,26,Starter
+Atlas,Gaddi Aguirre,"$ 2,885","$ 150,000","$ 40,000","$ 190,000","Jun 30, 2021","Jun 30, 2026",1,"$ 150,000",D,CB,29,Starter
+Atlas,Alonso Ramírez,"$ 2,500","$ 130,000","$ 30,000","$ 160,000",,"Jun 30, 2026",1,"$ 130,000",M,DM,24,Starter
+Atlas,Édgar Zaldivar,"$ 2,308","$ 120,000","$ 30,000","$ 150,000","Jan 25, 2022","Jun 30, 2026",1,"$ 120,000",M,DM,28,Reserve
+Atlas,Paulo Ramírez,"$ 1,731","$ 90,000","$ 20,000","$ 110,000","Jan 1, 2025","Jun 30, 2026",1,"$ 90,000",M,DM,22,Starter
+Atlas,Víctor Ríos,"$ 1,346","$ 70,000","$ 20,000","$ 90,000","Jan 1, 2024","Jun 30, 2026",1,"$ 70,000",M,DM,21,Reserve
+Atlas,César Ramos,"$ 1,154","$ 60,000","$ 20,000","$ 80,000","Jul 3, 2025","Jun 30, 2026",1,"$ 60,000",K,GK,25,Reserve
+Atlas,Antonio Sánchez,$ 962,"$ 50,000","$ 10,000","$ 60,000","Jul 1, 2022","Jun 30, 2026",1,"$ 50,000",K,GK,25,Reserve
+Atlas,Edyairth Ortega,$ 769,"$ 40,000","$ 10,000","$ 50,000","Jan 1, 2018","Jun 30, 2026",1,"$ 40,000",M,CM,28,Reserve

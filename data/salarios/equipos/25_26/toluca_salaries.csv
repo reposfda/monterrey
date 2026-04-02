@@ -1,0 +1,27 @@
+club_name,player_name,gross_salary_per_week,gross_salary_per_year,gross_bonus_per_year,total_gross_salary,signed,contract_expiration,years_remaining,gross_salary_remaining,position,position_detailed,player_age,status
+Toluca,Paulinho,"$ 108,269","$ 5,630,000","$ 1,410,000","$ 7,040,000","Jul 1, 2024","Jun 30, 2026",2,"$ 11,260,000",F,CF,32,Starter
+Toluca,Alexis Vega,"$ 25,000","$ 1,300,000","$ 200,000","$ 1,500,000","Jan 18, 2024","Jun 30, 2026",1,"$ 1,300,000",F,LW,27,Starter
+Toluca,Bruno Méndez,"$ 23,077","$ 1,200,000","$ 300,000","$ 1,500,000","Jul 9, 2024","Jun 30, 2027",2,"$ 2,400,000",D,CB,26,Starter
+Toluca,Federico Pereira,"$ 20,192","$ 1,050,000","$ 260,000","$ 1,310,000","Nov 2, 2024","Jun 30, 2028",3,"$ 3,150,000",D,CB,25,Starter
+Toluca,Helinho,"$ 19,615","$ 1,020,000","$ 260,000","$ 1,280,000","Sep 15, 2024","Jun 30, 2026",1,"$ 1,020,000",F,RW,25,Starter
+Toluca,Héctor Herrera,"$ 19,615","$ 1,020,000","$ 150,000","$ 1,170,000","Jan 2, 2025","Jun 30, 2026",1,"$ 1,020,000",M,DM,35,Reserve
+Toluca,Jesús Gallardo,"$ 19,038","$ 990,000","$ 250,000","$ 1,240,000","Jul 1, 2024","Jun 30, 2027",2,"$ 1,980,000",D,RB,31,Starter
+Toluca,Diego Barbosa,"$ 17,692","$ 920,000","$ 230,000","$ 1,150,000","Jan 1, 2025","Jun 30, 2026",1,"$ 920,000",D,RB,28,Reserve
+Toluca,Nicolás Castro,"$ 17,692","$ 920,000","$ 230,000","$ 1,150,000","Jul 1, 2025","Jun 30, 2026",1,"$ 920,000",F,AM,24,Starter
+Toluca,Jesús Angulo,"$ 13,846","$ 720,000","$ 180,000","$ 900,000","Jul 14, 2023","Jun 30, 2027",2,"$ 1,440,000",F,AM,28,Starter
+Toluca,Santiago Simón,"$ 13,654","$ 710,000","$ 180,000","$ 890,000","Aug 16, 2025","Jun 30, 2029",4,"$ 2,840,000",M,RM,23,Starter
+Toluca,Luan,"$ 13,654","$ 710,000","$ 180,000","$ 890,000","Jul 1, 2024","Jun 30, 2026",1,"$ 710,000",D,CB,32,Reserve
+Toluca,Marcel Ruiz,"$ 13,654","$ 710,000","$ 80,000","$ 790,000","Dec 21, 2023","Jun 30, 2027",2,"$ 1,260,000",M,CM,24,Reserve
+Toluca,Mauricio Isaís,"$ 11,538","$ 600,000","$ 150,000","$ 750,000","Jul 3, 2025","Jun 30, 2026",1,"$ 600,000",D,LB,24,Reserve
+Toluca,Antonio Briseño,"$ 10,769","$ 560,000","$ 140,000","$ 700,000","Jan 1, 2025","Jun 30, 2026",1,"$ 560,000",D,CB,31,Reserve
+Toluca,Hugo González,"$ 9,231","$ 480,000","$ 120,000","$ 600,000","Jul 7, 2025","Jun 30, 2026",1,"$ 480,000",K,GK,35,Reserve
+Toluca,Franco Romero,"$ 8,654","$ 450,000","$ 110,000","$ 560,000","Jan 15, 2025","Dec 31, 2027",2,"$ 900,000",M,DM,25,Starter
+Toluca,Fernando Arce,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","May 20, 2024","Jun 30, 2026",1,"$ 450,000",M,DM,28,Reserve
+Toluca,Robert Morales,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","Jul 1, 2023","Jun 30, 2026",1,"$ 420,000",F,CF,26,Reserve
+Toluca,Juan Domínguez,"$ 5,192","$ 270,000","$ 70,000","$ 340,000","Apr 17, 2024","Dec 31, 2028",3,"$ 810,000",F,RW,26,Reserve
+Toluca,Alek Álvarez,"$ 3,462","$ 180,000","$ 50,000","$ 230,000","Jan 1, 2025","Jun 30, 2026",1,"$ 180,000",F,LW,22,Reserve
+Toluca,Oswaldo Virgen,"$ 1,731","$ 90,000","$ 20,000","$ 110,000","Jul 1, 2025","Jun 30, 2026",1,"$ 90,000",F,CF,20,Reserve
+Toluca,Luis Arcadio García,"$ 1,731","$ 90,000","$ 20,000","$ 110,000","Jul 1, 2017","Jun 30, 2026",1,"$ 90,000",K,GK,32,Starter
+Toluca,Everardo del Villar,"$ 1,731","$ 90,000","$ 20,000","$ 110,000","Oct 1, 2024","Jun 30, 2026",1,"$ 90,000",D,CB,20,Reserve
+Toluca,Victor Arteaga,"$ 1,731","$ 90,000","$ 20,000","$ 110,000","Jan 1, 2025","Jun 30, 2026",1,"$ 90,000",M,DM,21,Reserve
+Toluca,Ronaldo Beltrán,"$ 1,538","$ 80,000","$ 20,000","$ 100,000","Jul 1, 2025","Jun 30, 2026",1,"$ 80,000",K,GK,23,Reserve
