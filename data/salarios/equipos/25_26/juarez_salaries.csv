@@ -1,0 +1,25 @@
+club_name,player_name,gross_salary_per_week,gross_salary_per_year,gross_bonus_per_year,total_gross_salary,signed,contract_expiration,years_remaining,gross_salary_remaining,position,position_detailed,player_age,status
+Juarez,Óscar Estupiñán,"$ 23,077","$ 1,200,000","$ 300,000","$ 1,500,000","Aug 29, 2024","Jun 30, 2027",2,"$ 2,400,000",F,CF,28,Starter
+Juarez,Jairo Torres,"$ 16,346","$ 850,000","$ 210,000","$ 1,060,000","Feb 21, 2024","Jun 30, 2026",1,"$ 850,000",F,RW,25,Reserve
+Juarez,Diego Valoyes,"$ 15,000","$ 780,000","$ 200,000","$ 980,000","Aug 24, 2023","Jun 30, 2026",1,"$ 780,000",F,RW,28,Reserve
+Juarez,Rodolfo Pizarro,"$ 12,308","$ 640,000","$ 160,000","$ 800,000","Jan 1, 2026","Jun 30, 2026",1,"$ 640,000",F,AM,31,Starter
+Juarez,Jesús Murillo,"$ 12,308","$ 640,000","$ 160,000","$ 800,000","Jan 2, 2025","Jun 30, 2026",1,"$ 640,000",D,CB,31,Starter
+Juarez,José Luis Rodríguez,"$ 10,769","$ 560,000","$ 140,000","$ 700,000","Jul 1, 2025","Jun 30, 2028",3,"$ 1,680,000",F,LW,27,Starter
+Juarez,Jonathan González,"$ 10,769","$ 560,000","$ 140,000","$ 700,000","Jan 2, 2025","Jun 30, 2025",1,"$ 560,000",M,DM,26,Reserve
+Juarez,Ángel Zaldivar,"$ 9,423","$ 490,000","$ 120,000","$ 610,000","Dec 12, 2024","Dec 31, 2025",1,"$ 490,000",F,CF,31,Reserve
+Juarez,Alejandro Mayorga,"$ 9,423","$ 490,000","$ 120,000","$ 610,000","Jul 4, 2025","Dec 31, 2028",3,"$ 1,470,000",D,LB,28,Starter
+Juarez,Sebastián Jurado,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","Jan 2, 2025","Dec 31, 2027",2,"$ 840,000",K,GK,27,Starter
+Juarez,Homer Martínez,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","Jul 23, 2025","Jun 30, 2028",3,"$ 1,260,000",M,DM,27,Starter
+Juarez,Javier Salas,"$ 7,885","$ 410,000","$ 100,000","$ 510,000","Jul 1, 2022","Jun 30, 2026",1,"$ 410,000",M,DM,32,Reserve
+Juarez,Ricardinho,"$ 6,731","$ 350,000","$ 90,000","$ 440,000","Jul 1, 2025","Jun 30, 2028",3,"$ 1,050,000",F,LW,27,Reserve
+Juarez,Díeter Villalpando,"$ 6,731","$ 350,000","$ 90,000","$ 440,000","Jan 1, 2024","Jun 30, 2026",1,"$ 350,000",M,CM,34,Reserve
+Juarez,Raymundo Fulgencio,"$ 6,731","$ 350,000","$ 90,000","$ 440,000","Jul 15, 2025","Jun 30, 2028",3,"$ 1,050,000",F,LW,25,Reserve
+Juarez,Guilherme Castilho,"$ 6,154","$ 320,000","$ 80,000","$ 400,000","Feb 11, 2025","Jun 30, 2026",1,"$ 320,000",M,CM,25,Starter
+Juarez,Denzell García,"$ 5,769","$ 300,000","$ 80,000","$ 380,000","Jan 1, 2023","Jun 30, 2026",1,"$ 300,000",M,DM,22,Starter
+Juarez,José García,"$ 5,769","$ 300,000","$ 80,000","$ 380,000","Jul 16, 2021","Jun 30, 2026",1,"$ 300,000",D,CB,29,Starter
+Juarez,Madson,"$ 5,385","$ 280,000","$ 70,000","$ 350,000","Feb 3, 2025","Jun 30, 2027",2,"$ 560,000",F,LW,26,Starter
+Juarez,Moisés Mosquera,"$ 3,462","$ 180,000","$ 50,000","$ 230,000","Aug 8, 2023","Jun 30, 2028",3,"$ 540,000",D,CB,24,Reserve
+Juarez,Francisco Nevárez,"$ 3,462","$ 180,000","$ 50,000","$ 230,000","Jan 1, 2022","Jun 30, 2026",1,"$ 180,000",D,RB,24,Reserve
+Juarez,Diego Ochoa,"$ 3,269","$ 170,000","$ 40,000","$ 210,000","Jul 4, 2025","Jun 30, 2026",1,"$ 170,000",D,CB,20,Reserve
+Juarez,Benny Díaz,"$ 1,731","$ 90,000","$ 20,000","$ 110,000","Jul 1, 2024","Jun 30, 2026",1,"$ 90,000",K,GK,26,Reserve
+Juarez,Guillermo Ruiz,"$ 1,346","$ 70,000","$ 20,000","$ 90,000","Jul 7, 2025","Jun 30, 2027",2,"$ 140,000",K,GK,21,Reserve

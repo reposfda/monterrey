@@ -1,0 +1,31 @@
+club_name,player_name,gross_salary_per_week,gross_salary_per_year,gross_bonus_per_year,total_gross_salary,signed,contract_expiration,years_remaining,gross_salary_remaining,position,position_detailed,player_age,status
+Tigres UANL,André-Pierre Gignac,"$ 88,462","$ 4,600,000","$ 690,000","$ 5,290,000","Jun 11, 2025","Jun 30, 2026",1,"$ 4,600,000",F,CF,39,Reserve
+Tigres UANL,Ángel Correa,"$ 76,923","$ 4,000,000","$ 600,000","$ 4,600,000","Jul 9, 2025","Jun 30, 2030",5,"$ 20,000,000",F,RW,30,Starter
+Tigres UANL,Fernando Gorriarán,"$ 48,077","$ 2,500,000","$ 380,000","$ 2,880,000","Dec 31, 2023","Dec 31, 2026",1,"$ 2,500,000",M,CM,30,Starter
+Tigres UANL,Uriel Antuna,"$ 48,077","$ 2,500,000","$ 630,000","$ 3,130,000","Aug 27, 2024","Jun 30, 2028",3,"$ 7,500,000",F,RW,28,Reserve
+Tigres UANL,Diego Lainez,"$ 38,462","$ 2,000,000","$ 300,000","$ 2,300,000","Aug 1, 2023","Jun 30, 2027",2,"$ 4,000,000",F,RW,25,Starter
+Tigres UANL,Joaquim,"$ 28,846","$ 1,500,000","$ 380,000","$ 1,880,000","Jul 27, 2024","Jun 30, 2027",2,"$ 3,200,000",D,CB,26,Starter
+Tigres UANL,Nahuel Guzmán,"$ 23,077","$ 1,200,000","$ 300,000","$ 1,500,000","Jul 6, 2023","Jun 30, 2025",1,"$ 1,200,000",K,GK,39,Starter
+Tigres UANL,Nicolás Ibáñez,"$ 19,615","$ 1,020,000","$ 150,000","$ 1,170,000","Jan 18, 2023","Dec 31, 2026",1,"$ 1,020,000",F,CF,31,Reserve
+Tigres UANL,Sebastián Córdoba,"$ 19,615","$ 1,020,000","$ 260,000","$ 1,280,000","Jan 1, 2022","Dec 31, 2025",1,"$ 1,020,000",F,AM,28,Reserve
+Tigres UANL,Rómulo,"$ 19,615","$ 1,020,000","$ 260,000","$ 1,280,000","Dec 31, 2024","Dec 31, 2027",2,"$ 2,040,000",M,DM,25,Starter
+Tigres UANL,Javier Aquino,"$ 18,654","$ 970,000","$ 240,000","$ 1,210,000","Sep 20, 2024","Dec 31, 2025",1,"$ 970,000",D,RB,35,Starter
+Tigres UANL,Juan Vigón,"$ 17,308","$ 900,000","$ 230,000","$ 1,130,000","Jul 1, 2021","Jun 30, 2026",1,"$ 900,000",M,CM,34,Reserve
+Tigres UANL,Juan Brunetta,"$ 16,923","$ 880,000","$ 130,000","$ 1,010,000","Aug 6, 2025","Dec 31, 2027",2,"$ 1,760,000",F,AM,28,Starter
+Tigres UANL,Marco Fafán,"$ 14,808","$ 770,000","$ 190,000","$ 960,000","Aug 6, 2025","Jun 30, 2026",1,"$ 770,000",D,LB,26,Starter
+Tigres UANL,Osvaldo Rodríguez,"$ 13,462","$ 700,000","$ 180,000","$ 880,000","Aug 20, 2024","Jun 30, 2027",2,"$ 1,400,000",D,LB,29,Reserve
+Tigres UANL,Jesús Angulo,"$ 11,154","$ 580,000","$ 90,000","$ 670,000","Jan 1, 2022","Jun 30, 2028",3,"$ 1,740,000",D,LB,27,Starter
+Tigres UANL,Felipe Rodríguez,"$ 10,385","$ 540,000","$ 140,000","$ 680,000","Apr 29, 2024","Jun 30, 2026",1,"$ 540,000",K,GK,36,Reserve
+Tigres UANL,Jesús Garza,"$ 10,308","$ 520,000","$ 130,000","$ 650,000","Jul 1, 2022","Jun 30, 2026",1,"$ 520,000",D,RB,25,Reserve
+Tigres UANL,Vladimir Loroña,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","Jul 13, 2022","Jul 12, 2026",1,"$ 420,000",D,RB,26,Reserve
+Tigres UANL,Juan José Purata,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","May 31, 2025","Jun 30, 2029",4,"$ 1,680,000",D,CB,27,Reserve
+Tigres UANL,Eduardo Tercero,"$ 7,692","$ 400,000","$ 90,000","$ 490,000","Jul 30, 2020","Jun 30, 2026",1,"$ 390,000",D,CB,29,Reserve
+Tigres UANL,Fernando Tapia,"$ 6,731","$ 350,000","$ 90,000","$ 440,000","Jul 1, 2025","Jun 30, 2026",1,"$ 350,000",K,GK,24,Reserve
+Tigres UANL,Edgar López,"$ 6,731","$ 350,000","$ 90,000","$ 440,000","Jul 1, 2025","Jun 30, 2026",1,"$ 350,000",F,CF,26,Reserve
+Tigres UANL,Ozziel Herrera,"$ 5,769","$ 300,000","$ 80,000","$ 380,000","Jul 24, 2023","Jun 30, 2027",2,"$ 600,000",F,RW,24,Starter
+Tigres UANL,Rafael Guerrero,"$ 5,769","$ 300,000","$ 70,000","$ 370,000","Jul 3, 2026","Jun 30, 2026",1,"$ 280,000",D,CB,22,Reserve
+Tigres UANL,Marcelo Flores,"$ 4,038","$ 210,000","$ 50,000","$ 260,000","Sep 10, 2023","Jun 30, 2026",2,"$ 420,000",F,LW,21,Reserve
+Tigres UANL,Eugenio Pizzuto,"$ 3,462","$ 180,000","$ 50,000","$ 230,000","Jul 1, 2025","Jun 30, 2026",1,"$ 180,000",M,DM,23,Reserve
+Tigres UANL,Leonardo Flores,"$ 3,269","$ 170,000","$ 40,000","$ 210,000","Jul 1, 2025","Jun 30, 2026",1,"$ 170,000",F,CF,22,Reserve
+Tigres UANL,Antonio Carrera,"$ 3,269","$ 170,000","$ 40,000","$ 210,000","Jul 3, 2025","Jun 30, 2026",1,"$ 170,000",K,GK,21,Reserve
+Tigres UANL,Fernando Ordóñez,"$ 2,885","$ 150,000","$ 40,000","$ 190,000","Jul 1, 2023","Jun 30, 2026",1,"$ 150,000",D,LB,24,Reserve

@@ -1,0 +1,26 @@
+club_name,player_name,gross_salary_per_week,gross_salary_per_year,gross_bonus_per_year,total_gross_salary,signed,contract_expiration,years_remaining,gross_salary_remaining,position,position_detailed,player_age,status
+Monterrey,Sergio Canales,"$ 128,846","$ 6,700,000","$ 1,010,000","$ 7,710,000","Jul 24, 2023","Jun 30, 2026",1,"$ 6,700,000",F,AM,34,Reserve
+Monterrey,Óliver Torres,"$ 94,808","$ 4,930,000","$ 700,000","$ 5,630,000","Jul 1, 2024","Jun 30, 2027",2,"$ 9,860,000",M,CM,30,Starter
+Monterrey,Anthony Martial,"$ 86,538","$ 4,500,000","$ 680,000","$ 5,180,000","Sep 12, 2025","Jun 30, 2027",2,"$ 9,000,000",F,CF,29,Reserve
+Monterrey,Lucas Ocampos,"$ 76,923","$ 4,000,000","$ 1,000,000","$ 5,000,000","Sep 3, 2024","Jun 30, 2027",2,"$ 8,000,000",F,LW,31,Starter
+Monterrey,Sergio Ramos,"$ 76,923","$ 4,000,000","$ 600,000","$ 4,600,000","Feb 6, 2025","Dec 31, 2025",1,"$ 4,000,000",D,CB,39,Reserve
+Monterrey,Jesús Corona,"$ 48,077","$ 2,500,000","$ 380,000","$ 2,880,000","Sep 1, 2023","Jun 30, 2026",1,"$ 2,500,000",F,RW,32,Reserve
+Monterrey,Jorge Rodríguez,"$ 37,885","$ 1,970,000","$ 490,000","$ 2,460,000","Aug 29, 2025","Jun 30, 2027",2,"$ 3,940,000",M,DM,30,Starter
+Monterrey,Germán Berterame,"$ 34,615","$ 1,800,000","$ 450,000","$ 2,250,000","Nov 28, 2024","Dec 31, 2027",2,"$ 3,600,000",F,CF,26,Starter
+Monterrey,Gerardo Arteaga,"$ 23,077","$ 1,200,000","$ 300,000","$ 1,500,000","Jan 29, 2024","Dec 31, 2027",2,"$ 2,400,000",D,LB,27,Starter
+Monterrey,Héctor Moreno,"$ 23,077","$ 1,200,000","$ 300,000","$ 1,500,000","Jul 17, 2025","Dec 31, 2025",1,"$ 1,200,000",D,CB,37,Starter
+Monterrey,Fidel Ambríz,"$ 23,077","$ 1,200,000","$ 300,000","$ 1,500,000","Aug 27, 2024","Jun 30, 2028",3,"$ 3,600,000",M,DM,22,Starter
+Monterrey,Carlos Salcedo,"$ 19,231","$ 1,000,000","$ 250,000","$ 1,250,000","Jan 19, 2025","Dec 31, 2027",2,"$ 2,000,000",D,CB,31,Reserve
+Monterrey,Santiago Mele,"$ 18,846","$ 980,000","$ 280,000","$ 1,260,000","Jun 11, 2025","Jun 30, 2029",4,"$ 3,920,000",K,GK,28,Starter
+Monterrey,Víctor Guzmán,"$ 17,692","$ 920,000","$ 230,000","$ 1,150,000","Jul 27, 2024","Jun 30, 2028",3,"$ 2,760,000",D,CB,23,Starter
+Monterrey,Stefan Medina,"$ 13,846","$ 720,000","$ 180,000","$ 900,000","Jul 20, 2021","Dec 31, 2025",1,"$ 720,000",D,RB,33,Starter
+Monterrey,Érick Aguirre,"$ 12,885","$ 670,000","$ 170,000","$ 840,000","Jul 3, 2021","Jun 30, 2026",1,"$ 670,000",D,RB,28,Reserve
+Monterrey,Roberto de la Rosa,"$ 12,115","$ 630,000","$ 160,000","$ 790,000","Jul 1, 2025","Jun 30, 2026",1,"$ 630,000",F,CF,25,Reserve
+Monterrey,Luis Reyes,"$ 8,654","$ 450,000","$ 110,000","$ 560,000","Jan 2, 2025","Jun 30, 2026",1,"$ 450,000",D,LB,34,Reserve
+Monterrey,Luis Cárdenas,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","Aug 18, 2023","Jun 30, 2026",1,"$ 420,000",K,GK,32,Reserve
+Monterrey,Ricardo Chávez,"$ 8,077","$ 420,000","$ 110,000","$ 530,000","Jan 2, 2025","Jun 30, 2026",1,"$ 420,000",D,RB,30,Starter
+Monterrey,Michell Rodríguez,"$ 6,731","$ 350,000","$ 90,000","$ 440,000","Jul 1, 2025","Jun 30, 2026",1,"$ 350,000",F,RW,25,Reserve
+Monterrey,Antonio Leone,"$ 5,385","$ 280,000","$ 70,000","$ 350,000","Jan 26, 2024","Dec 31, 2027",2,"$ 560,000",D,CB,21,Reserve
+Monterrey,Luis Sánchez,"$ 5,000","$ 260,000","$ 70,000","$ 330,000","Jul 1, 2021","Jun 30, 2026",1,"$ 260,000",D,CB,25,Reserve
+Monterrey,Iker Fimbres,"$ 1,731","$ 90,000","$ 20,000","$ 110,000","Jan 1, 2025","Jun 30, 2026",1,"$ 90,000",F,AM,20,Reserve
+Monterrey,César Bustos,"$ 1,154","$ 60,000","$ 20,000","$ 80,000","Jul 1, 2025","Jun 30, 2026",1,"$ 60,000",D,CB,20,Reserve
