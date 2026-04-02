@@ -42,6 +42,34 @@ EVENTS_CSV = DATA_DIR / "events_2025_2026.csv"
 
 
 # =============================================================================
+# CONFIGURACION PARA ACTUALIZACION DE SCORES
+# =============================================================================
+
+# Método de consolidación de scores
+SCORE_CONSOLIDATION_METHOD = "promedio_ponderado"
+
+######
+#  Años a scrapear de Transfermartkt
+# NOTA: En Transfermarkt la temporada comienza en Junio. Por lo tanto, la ventana del verano europeo 2025 (Junio 2025 - Agosto 2025) es parte de la temporada 25/26. 
+#       De igual manera, la ventana de pases del invierno europeo (Diciembre 2025 - Enero 2026) tambien forma parte de la temporada 2025/26.
+#       Finalmente, la ventana de pases del verano europeo 2026 (Julio 2026 - Agosto 2026) ya formará parte de la temporada 2026/27.
+
+#       En nuestro desarrollo, se obtuvieron las transferencias de la temporada 2024/25 y 2025/26. Por lo tanto los valores utilizados fueron:
+#       tmkt_start_year = 2024
+#       tmkt_end_year = 2026
+
+# Para actualizar a y obtener las transferencias de la temporada 2026/7, se deben usar los siguientes valores:
+#       tmkt_start_year = 2026
+#       tmkt_end_year = 2027
+TMKT_START_YEAR = 2024
+TMKT_END_YEAR = 2026
+
+# Temporada para la cual se estarán procesando los salarios
+SALARIES_SEASON = "25_26"
+
+
+
+# =============================================================================
 # COLORES CORPORATIVOS MONTERREY
 # =============================================================================
 

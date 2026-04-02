@@ -5,6 +5,9 @@ pandas
 plotly==6.5.2
 streamlit==1.54.0
 scikit-learn==1.5.2
-
-
+beautifulsoup4==4.12.3
+lxml==5.3.0
+requests==2.32.3
+rapidfuzz
+Unidecode
 
