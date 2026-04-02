@@ -694,8 +694,43 @@ La nueva temporada aparecerá automáticamente en el selector del sidebar.
 ## 📅 Agregar Nueva Temporada de Salarios y generación de score_cost
 
 ### Paso 1: Scores por temporada (archivos delantero_scores_2025_2026.csv, goleros_score_2025_2026.csv, etc)
-El proceso de consolidar los scores en una única temporada comienza a partir de estos archivos, que pueden actualizar siguiendo los pasos que ya están más arriba en este archivo.  
-Es importante que estos archivos sigan la nomenclatura actual de {posicion}_scores_{año_inicio_temporada}_{año_fin_temporada}.csv porque de esa manera los scripts qu actualizan los pueden leer de manera dinámica a medida que se agregan más archivos.
+
+#### Generación de archivos de scores por posición
+
+Para generar los archivos de scores por posición (ej: `delantero_scores_2025_2026.csv`), es importante **NO usar directamente las clases scorer** (como `DelanteroScorer`, `GoleroScorer`, etc.), ya que estas generan DataFrames con todas las columnas intermedias del proceso de cálculo (~60-80 columnas).
+
+**✅ Método correcto:** Usar `compute_scoring_from_df()` de `utils/scoring_wrappers.py`:
+
+```python
+import pandas as pd
+from pathlib import Path
+from utils.scoring_wrappers import compute_scoring_from_df
+
+# 1. Cargar CSV base
+df_base = pd.read_csv(
+    "data/per90/all_players_complete_2025_2026.csv",
+    encoding="utf-8"
+)
+
+# 2. Calcular scores (DataFrame limpio con ~20-30 columnas)
+df_scores = compute_scoring_from_df(
+    df_base=df_base,
+    position_key="Delantero",  # Cambiar según posición
+    min_minutes=450,
+    min_matches=3,
+    selected_teams=None,  # None = todos los equipos
+)
+
+# 3. Guardar
+output_path = Path("data/scores/delantero_scores_2025_2026.csv")
+df_scores.to_csv(output_path, index=False, encoding='utf-8-sig')
+```
+
+**Posiciones disponibles:** "Delantero", "Extremo", "Interior/Mediapunta", "Volante", "Lateral", "Zaguero", "Golero"
+
+**Alternativa:** También pueden generar estos archivos directamente desde la aplicación de Streamlit (página "Scoring Liga"), que usa internamente la misma función `compute_scoring_from_df()`. La tabla mostrada contiene los datos ya procesados que pueden exportarse.
+
+Es importante que estos archivos sigan la nomenclatura `{posicion}_scores_{año_inicio}_{año_fin}.csv` para que los scripts de consolidación los puedan leer dinámicamente.
 
 ### Paso 2: Información consolidada de los scores (archivos {posicion}_scores_cost.csv).
 
