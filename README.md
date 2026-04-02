@@ -737,10 +737,9 @@ TMKT_START_YEAR = 2026
 TMKT_END_YEAR = 2027
 ```
 
-Ejecutar `scrap_transfers_from_tmkt.py`:
+Desde la raíz del repo, ejecutar el siguiente comando:
 ```bash
-cd core
-python scrap_transfers_from_tmkt.py
+python -m core.scrap_transfers_from_tmkt
 ```
 
 ##### Paso 2.B.2:
@@ -755,21 +754,28 @@ Para reproducir esta parte, van a necesitar acceder a Capology o a cualquier otr
 - ‘contract_expiration' -> fecha de expiración del contrato (en formato strftime(‘%d-%m-%Y’))
 
 Las últimas dos columnas son necesarias para calcular la duración del contrato del jugador, y utilizar esta duración para calcular la amortización del precio que el club pagó por ese jugador.  
-Con esta información para cada club, solamente hay que consolidarla en un único archivo ejecutando el script mencionado.
+Con esta información para cada club, tienen que ponerla en la carpeta `data/salarios/equipos/26_27`.  
 
+Luego, en el `config.py` se debe cambiar la temporada para la cual se procesarán los salarios:  
+
+Editar `config.py`:
+```python
+SALARIES_SEASON = "26_27"
+```
+
+Finalmente, desde la raíz del repo, ejecutar el siguiente comando para consolidar los salarios en un único archivo:  
 ```bash
-cd core
-python consolidar_salarios.py
+python -m core.consolidar_salarios
 ```
 
 ##### Paso 2.B.3:
 Como menciona la plataforma, el costo que un jugador representa para su club está compuesto tanto del precio que el club pagó por ese jugador (cuando corresponde), como del salario anual que el club le paga al mismo jugador.  
 Por lo tanto, para saber qué porcentaje del presupuesto del equipo se lleva cada jugador hay que combinar la información obtenida en el Paso 2.B.1 con la información obtenida en el Paso 2.B.2.  
-Esto se hace con el script `calculate_players_annual_cost.py`, que combina ambos tipos de datos económicos para armar el archivo `players_annual_cost.csv` en la ruta `data/salarios/players_annual_cost.csv`
+Esto se hace con el script `calculate_players_annual_cost.py`, que combina ambos tipos de datos económicos para armar el archivo `players_annual_cost.csv` en la ruta `data/salarios/players_annual_cost.csv`  
 
+Desde la raíz del repo, ejecutar:
 ```bash
-cd core
-python calculate_players_annual_cost.py
+python -m core.calculate_players_annual_cost
 ```
 
 ### Paso 3:
