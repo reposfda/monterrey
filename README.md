@@ -706,9 +706,12 @@ cd core
 python consolidar_scores.py
 ```
 
-Este script toma como input los archivos {posicion}_score_{temporada}.csv y los combina en un único score final utilizando uno de varios métodos disponibles. 
-Todos los métodos disponibles están ya codeados y pueden ser seleccionados por ustedes según su propio criterio. Para saber qué método utilizar, les dejo el archivo `metodos_consolidacion_score.md`, el cual explica brevemente la metodología matemática de cada uno y sus correspondientes implicaciones futbolísticas. 
-El equipo de FDA decidió utilizar para la combinación un promedio ponderado simple que otorgaba un peso de 0.8 a la última temporada disponible y de 0.20 a la penúltima; pero el equipo interno de Monterrey puede decidir cambiar esa ponderación, agregar temporadas más antiguas e incluso cambiar el método por cualquier otro.
+Este script toma como input los archivos {posicion}_score_{temporada}.csv y los combina en un único score final utilizando uno de varios métodos disponibles.  
+
+Todos los métodos disponibles están ya codeados y pueden ser seleccionados por ustedes según su propio criterio. Para saber qué método utilizar, les dejo el archivo `metodos_consolidacion_score.md`, el cual explica brevemente la metodología matemática de cada uno y sus correspondientes implicaciones futbolísticas.  
+
+El equipo de FDA decidió utilizar para la combinación un promedio ponderado simple que otorgaba un peso de 0.8 a la última temporada disponible y de 0.20 a la penúltima; pero el equipo interno de Monterrey puede decidir cambiar esa ponderación, agregar temporadas más antiguas e incluso cambiar el método por cualquier otro.  
+
 En todos los casos, si sucede que un jugador haya disputado sólo una de las temporadas consideradas, se utiliza directamente el score de esa temporada, sin ponderar.
 Este código devuelve como output un único archivo csv por posición que combina el score de las temporadas seleccionadas en un único ‘Overall_Score_Final’, y lo guarda en data/scores/score_consolidado/{nombre_del_metodo_aplicado} bajo el nombre `score_{pos}_final_{metodo_utilizado}.csv`
 
@@ -716,7 +719,8 @@ Este código devuelve como output un único archivo csv por posición que combin
 Para poder obtener el archivo final `{posicion}_scores_cost.csv` se necesita combinar los archivos de scores resultantes del paso 2.A con los datos económicos de los jugadores, los cuales provienen de dos fuentes:
 	
 ##### Paso 2.B.1:
-Transfermarkt -> Para obtener el precio de transferencia de los jugadores (lo que el club pagó para adquirir el jugador).
+Transfermarkt -> Para obtener el precio de transferencia de los jugadores (lo que el club pagó para adquirir el jugador).  
+
 Esto se hace con el script `scrap_transfers_from_tmkt.py`. Lo único a considerar en este caso es que hay que darle el rango de años sobre el cual se quiere que se extraigan las transferencias. Eso se hace desde el mismo config.py donde se cambian las otras variables de actualización. Ahí está explicado cómo considerar los años según la manera en que lo toma Transfermarkt. El resultado de este script es un archivo csv con las transferencias realizadas por cada club en cada ventana de pases de los años considerados, que son guardados en la carpeta `data/transfers/`. En resúmen, para actualizar data de Transfermarkt:
 
 Editar `config.py`:
@@ -732,8 +736,8 @@ python scrap_transfers_from_tmkt.py
 ```
 
 ##### Paso 2.B.2:
-Capology (o cualquier otra fuente que provea el salario de los jugadores de todos los planteles) -> Como mencionamos durante el desarrollo, nosotros obtuvimos la data de los salarios de la LigaMX de manera manual desde Capology. Lo que hicimos fue ingresar a Capology y manualmente generar un csv para cada equipo con sus respectivos salarios de la temporada 25/26 (los mismos se encuentran en la carpeta `data/salarios/equipos/25_26/`). Luego, procesamos los mismos con el script `consolidar_salarios.py` y los unimos en un único archivo final llamado `ligamx_salarios.csv` que queda guardado en la carpeta `data/salarios/`.
-
+Capology (o cualquier otra fuente que provea el salario de los jugadores de todos los planteles) -> Como mencionamos durante el desarrollo, nosotros obtuvimos la data de los salarios de la LigaMX de manera manual desde Capology.  
+Lo que hicimos fue ingresar a Capology y manualmente generar un csv para cada equipo con sus respectivos salarios de la temporada 25/26 (los mismos se encuentran en la carpeta `data/salarios/equipos/25_26/`). Luego, procesamos los mismos con el script `consolidar_salarios.py` y los unimos en un único archivo final llamado `ligamx_salarios.csv` que queda guardado en la carpeta `data/salarios/`.  
 Para reproducir esta parte, van a necesitar acceder a Capology o a cualquier otra fuente de datos de la cual puedan obtener la siguiente información (son los datos mínimos necesarios para continuar con el análisis, te los dejo tal como aparecen en las columnas del archivo `ligamx_salarios.csv`):
 	- ‘club_name'
 	- ‘player_name'
