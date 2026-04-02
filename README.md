@@ -737,14 +737,16 @@ python scrap_transfers_from_tmkt.py
 
 ##### Paso 2.B.2:
 Capology (o cualquier otra fuente que provea el salario de los jugadores de todos los planteles) -> Como mencionamos durante el desarrollo, nosotros obtuvimos la data de los salarios de la LigaMX de manera manual desde Capology.  
-Lo que hicimos fue ingresar a Capology y manualmente generar un csv para cada equipo con sus respectivos salarios de la temporada 25/26 (los mismos se encuentran en la carpeta `data/salarios/equipos/25_26/`). Luego, procesamos los mismos con el script `consolidar_salarios.py` y los unimos en un único archivo final llamado `ligamx_salarios.csv` que queda guardado en la carpeta `data/salarios/`.  
-Para reproducir esta parte, van a necesitar acceder a Capology o a cualquier otra fuente de datos de la cual puedan obtener la siguiente información (son los datos mínimos necesarios para continuar con el análisis, te los dejo tal como aparecen en las columnas del archivo `ligamx_salarios.csv`):
-	- ‘club_name'
-	- ‘player_name'
-	- ‘total_gross_salary' -> Salario bruto anual según contrato (incluyéndoselo premios y bonus)
-	- ‘signed' -> fecha de firma del contrato (en formato strftime(‘%d-%m-%Y’))
-	- ‘contract_expiration' -> fecha de expiración del contrato (en formato strftime(‘%d-%m-%Y’))
-Las últimas dos columnas son necesarias para calcular la duración del contrato del jugador, y utilizar esta duración para calcular la amortización del precio que el club pagó por ese jugador.
+Lo que hicimos fue ingresar a Capology y manualmente generar un csv para cada equipo con sus respectivos salarios de la temporada 25/26 (los mismos se encuentran en la carpeta `data/salarios/equipos/25_26/`).  
+Luego, procesamos los mismos con el script `consolidar_salarios.py` y los unimos en un único archivo final llamado `ligamx_salarios.csv` que queda guardado en la carpeta `data/salarios/`.  
+Para reproducir esta parte, van a necesitar acceder a Capology o a cualquier otra fuente de datos de la cual puedan obtener la siguiente información (son los datos mínimos necesarios para continuar con el análisis, te los dejo tal como aparecen en las columnas del archivo `ligamx_salarios.csv`):  
+- ‘club_name'
+- ‘player_name'
+- ‘total_gross_salary' -> Salario bruto anual según contrato (incluyéndoselo premios y bonus)
+- ‘signed' -> fecha de firma del contrato (en formato strftime(‘%d-%m-%Y’))
+- ‘contract_expiration' -> fecha de expiración del contrato (en formato strftime(‘%d-%m-%Y’))
+
+Las últimas dos columnas son necesarias para calcular la duración del contrato del jugador, y utilizar esta duración para calcular la amortización del precio que el club pagó por ese jugador.  
 Con esta información para cada club, solamente hay que consolidarla en un único archivo ejecutando el script mencionado.
 
 ```bash
@@ -753,8 +755,9 @@ python consolidar_salarios.py
 ```
 
 ##### Paso 2.B.3:
-Como menciona la plataforma, el costo que un jugador representa para su club está compuesto tanto del precio que el club pagó por ese jugador (cuando corresponde), como del salario anual que el club le paga al mismo jugador. Por lo tanto, para saber qué porcentaje del presupuesto del equipo se lleva cada jugador hay que combinar la información obtenida en el Paso 2.B.1 con la información obtenida en el Paso 2.B.2.
-		Esto se hace con el script `calculate_players_annual_cost.py`, que combina ambos tipos de datos económicos para armar el archivo `players_annual_cost.csv` en la ruta `data/salarios/players_annual_cost.csv`
+Como menciona la plataforma, el costo que un jugador representa para su club está compuesto tanto del precio que el club pagó por ese jugador (cuando corresponde), como del salario anual que el club le paga al mismo jugador.  
+Por lo tanto, para saber qué porcentaje del presupuesto del equipo se lleva cada jugador hay que combinar la información obtenida en el Paso 2.B.1 con la información obtenida en el Paso 2.B.2.  
+Esto se hace con el script `calculate_players_annual_cost.py`, que combina ambos tipos de datos económicos para armar el archivo `players_annual_cost.csv` en la ruta `data/salarios/players_annual_cost.csv`
 
 ```bash
 cd core
@@ -762,7 +765,7 @@ python calculate_players_annual_cost.py
 ```
 
 ### Paso 3:
-Una vez que se cuenta con el archivo `players_annual_cost.csv` actualizado para la última temporada, se lo puede utilizar para calcular el score_cost actual de cada posición. Eso se hace con el script `analisis_cruzado.py`, que toma los archivos resultantes del Paso 2.A y los combina con el `player_annual_cost.csv` resultante del Paso 2.B.3.
+Una vez que se cuenta con el archivo `players_annual_cost.csv` actualizado para la última temporada, se lo puede utilizar para calcular el score_cost actual de cada posición. Eso se hace con el script `analisis_cruzado.py`, que toma los archivos resultantes del Paso 2.A y los combina con el `player_annual_cost.csv` resultante del Paso 2.B.3.  
 Este script actualiza los archivos de cada posición en la carpeta `data/scores/score_cost`, que son los que eventualmente termina considerando el modelo final.
 
 ```bash
@@ -770,7 +773,8 @@ cd core
 python analisis_cruzado.py
 ```
 
-En caso de que aún no cuenten con la data económica de salarios para hacer las actualizaciones del punto 2 en adelante, pueden actualizar hasta los csv que se mencionan en el Paso 1 y el tablero seguirá funcionando sin problemas. La situación a tener en cuenta en ese caso es que habrá un desfasaje temporal entre la performance dentro de la cancha (actual) y los salarios (antiguos). 
+En caso de que aún no cuenten con la data económica de salarios para hacer las actualizaciones del punto 2 en adelante, pueden actualizar hasta los csv que se mencionan en el Paso 1 y el tablero seguirá funcionando sin problemas.  
+La situación a tener en cuenta en ese caso es que habrá un desfasaje temporal entre la performance dentro de la cancha (actual) y los salarios (antiguos). 
 
 --
 
