@@ -694,7 +694,8 @@ La nueva temporada aparecerá automáticamente en el selector del sidebar.
 ## 📅 Agregar Nueva Temporada de Salarios y generación de score_cost
 
 ### Paso 1: Scores por temporada (archivos delantero_scores_2025_2026.csv, goleros_score_2025_2026.csv, etc)
-El proceso de consolidar los scores en una única temporada comienza a partir de estos archivos, que pueden actualizar siguiendo los pasos que ya están más arriba en este archivo.
+El proceso de consolidar los scores en una única temporada comienza a partir de estos archivos, que pueden actualizar siguiendo los pasos que ya están más arriba en este archivo.  
+Es importante que estos archivos sigan la nomenclatura actual de {posicion}_scores_{año_inicio_temporada}_{año_fin_temporada}.csv porque de esa manera los scripts qu actualizan los pueden leer de manera dinámica a medida que se agregan más archivos.
 
 ### Paso 2: Información consolidada de los scores (archivos {posicion}_scores_cost.csv).
 
@@ -711,6 +712,13 @@ Este script toma como input los archivos {posicion}_score_{temporada}.csv y los 
 Todos los métodos disponibles están ya codeados y pueden ser seleccionados por ustedes según su propio criterio. Para saber qué método utilizar, les dejo el archivo `metodos_consolidacion_score.md`, el cual explica brevemente la metodología matemática de cada uno y sus correspondientes implicaciones futbolísticas.  
 
 El equipo de FDA decidió utilizar para la combinación un promedio ponderado simple que otorgaba un peso de 0.8 a la última temporada disponible y de 0.20 a la penúltima; pero el equipo interno de Monterrey puede decidir cambiar esa ponderación, agregar temporadas más antiguas e incluso cambiar el método por cualquier otro.  
+En caso de querer cambiar el método de ponderación, se lo debe hacer modificando la variable `SCORE_CONSOLIDATION_METHOD` en el archivo `config.py` con alguno de los métodos válidos:  
+- "promedio_ponderado"
+- "valor_presente"
+- "media_bayesiana"
+- "ponderacion_dinamica"
+- "momentum": "momentum"
+
 
 En todos los casos, si sucede que un jugador haya disputado sólo una de las temporadas consideradas, se utiliza directamente el score de esa temporada, sin ponderar.
 Este código devuelve como output un único archivo csv por posición que combina el score de las temporadas seleccionadas en un único ‘Overall_Score_Final’, y lo guarda en data/scores/score_consolidado/{nombre_del_metodo_aplicado} bajo el nombre `score_{pos}_final_{metodo_utilizado}.csv`
