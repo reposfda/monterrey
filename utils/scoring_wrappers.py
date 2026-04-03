@@ -116,6 +116,30 @@ def _generate_profile_flags(df: pd.DataFrame, position_key: str) -> pd.DataFrame
     return df
 
 
+def _filter_columns(df: pd.DataFrame, position_key: str) -> pd.DataFrame:
+    """
+    Filtra columnas para eliminar solo las intermedias de cálculo.
+    
+    Elimina:
+    - Percentiles intermedios (pct_*)
+    - Flags binarios (flag_*)
+    
+    Mantiene TODO lo demás:
+    - Información del jugador (cualquier nombre de columna)
+    - Scores finales (Score_*)
+    - Flags (etiquetas descriptivas)
+    - Cualquier otra columna que no sea pct_* o flag_*
+    """
+    # Identificar columnas a ELIMINAR (en lugar de especificar las que mantener)
+    columns_to_drop = [
+        col for col in df.columns 
+        if col.startswith('pct_') or col.startswith('flag_')
+    ]
+    
+    # Eliminar solo las columnas intermedias
+    return df.drop(columns=columns_to_drop).copy()
+
+
 @st.cache_data(show_spinner=False)
 def compute_scoring_from_df(
     df_base: pd.DataFrame,
@@ -197,5 +221,8 @@ def compute_scoring_from_df(
     
     # 3) Generar columna Flags
     result = _generate_profile_flags(result, position_key)
+    
+    # 4) Filtrar columnas (eliminar pct_*, flag_*, etc.)
+    result = _filter_columns(result, position_key)
     
     return result
