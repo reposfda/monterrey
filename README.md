@@ -59,6 +59,8 @@ fda-mty-main/
 │   ├── obv_lanes.py             # Análisis de carriles OBV
 │   ├── obv_zones.py             # Análisis de zonas defensivas
 │   └── turnover_calculator.py   # Cálculo de turnovers
+│   └── generate_clean_scores.py # Calculo de scores automatico
+
 │
 ├── scoring/                     # Sistema de scoring por posición
 │   ├── __init__.py              # Exports públicos
@@ -809,7 +811,6 @@ Cada archivo tiene exactamente **17 columnas**:
 
 ✅ **Usar siempre:**
 - `core/generate_clean_scores.py` (recomendado)
-- `compute_scoring_from_df()` (manual)
 
 Los archivos deben seguir la nomenclatura `{posicion}_scores_{año_inicio}_{año_fin}.csv` para que los scripts de consolidación los puedan leer automáticamente.
 
