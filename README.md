@@ -693,44 +693,127 @@ La nueva temporada aparecerá automáticamente en el selector del sidebar.
 
 ## 📅 Agregar Nueva Temporada de Salarios y generación de score_cost
 
-### Paso 1: Scores por temporada (archivos delantero_scores_2025_2026.csv, goleros_score_2025_2026.csv, etc)
+## 📊 Generación Manual de Archivos de Scores por Posición
 
-#### Generación de archivos de scores por posición
+### Script Automatizado
 
-Para generar los archivos de scores por posición (ej: `delantero_scores_2025_2026.csv`), es importante **NO usar directamente las clases scorer** (como `DelanteroScorer`, `GoleroScorer`, etc.), ya que estas generan DataFrames con todas las columnas intermedias del proceso de cálculo (~60-80 columnas).
+Para generar los archivos de scores limpios (17 columnas) de manera automática, usar el script `core/generate_clean_scores.py`:
 
-**✅ Método correcto:** Usar `compute_scoring_from_df()` de `utils/scoring_wrappers.py`:
-
-```python
-import pandas as pd
-from pathlib import Path
-from utils.scoring_wrappers import compute_scoring_from_df
-
-# 1. Cargar CSV base
-df_base = pd.read_csv(
-    "data/per90/all_players_complete_2025_2026.csv",
-    encoding="utf-8"
-)
-
-# 2. Calcular scores (DataFrame limpio con ~20-30 columnas)
-df_scores = compute_scoring_from_df(
-    df_base=df_base,
-    position_key="Delantero",  # Cambiar según posición
-    min_minutes=450,
-    min_matches=3,
-    selected_teams=None,  # None = todos los equipos
-)
-
-# 3. Guardar
-output_path = Path("data/scores/delantero_scores_2025_2026.csv")
-df_scores.to_csv(output_path, index=False, encoding='utf-8-sig')
+```bash
+# Desde la raíz del proyecto
+python core/generate_clean_scores.py
 ```
 
-**Posiciones disponibles:** "Delantero", "Extremo", "Interior/Mediapunta", "Volante", "Lateral", "Zaguero", "Golero"
+Este script genera automáticamente archivos limpios para **todas las posiciones**:
+- `data/scores/delantero_scores_2025_2026.csv`
+- `data/scores/extremo_scores_2025_2026.csv`
+- `data/scores/volante_scores_2025_2026.csv`
+- `data/scores/interior_scores_2025_2026.csv`
+- `data/scores/zaguero_scores_2025_2026.csv`
+- `data/scores/lateral_scores_2025_2026.csv`
+- `data/scores/golero_scores_2025_2026.csv`
 
-**Alternativa:** También pueden generar estos archivos directamente desde la aplicación de Streamlit (página "Scoring Liga"), que usa internamente la misma función `compute_scoring_from_df()`. La tabla mostrada contiene los datos ya procesados que pueden exportarse.
+#### Ventajas del Script
 
-Es importante que estos archivos sigan la nomenclatura `{posicion}_scores_{año_inicio}_{año_fin}.csv` para que los scripts de consolidación los puedan leer dinámicamente.
+✅ **Automático** - Procesa todas las posiciones con un comando  
+✅ **Formato correcto** - Genera archivos con exactamente 17 columnas  
+✅ **Configurable** - Usa settings de `config.py`  
+✅ **Flags incluidos** - Genera perfiles descriptivos automáticamente
+
+#### Configuración
+
+El script usa valores de `config.py`:
+
+```python
+# config.py
+
+class Defaults:
+    MIN_MINUTES = 450        # Mínimo ~5 partidos completos
+    MIN_MATCHES = 3          # Mínimo 3 partidos
+    FLAG_QUANTILE = 0.75     # Top 25% para flags
+```
+
+Para cambiar estos valores, editar `config.py` y ejecutar el script nuevamente.
+
+#### Uso Avanzado
+
+##### Generar solo algunas posiciones
+
+```python
+from pathlib import Path
+from core.generate_clean_scores import generate_all_positions
+
+generate_all_positions(
+    per90_csv=Path("data/per90/all_players_complete_2025_2026.csv"),
+    output_dir=Path("data/scores"),
+    season_suffix="2025_2026",
+    positions=["Delantero", "Extremo"],  # Solo estas 2
+)
+```
+
+##### Generar una sola posición
+
+```python
+from pathlib import Path
+from core.generate_clean_scores import generate_position_scores
+
+generate_position_scores(
+    position_key="Delantero",
+    per90_csv=Path("data/per90/all_players_complete_2025_2026.csv"),
+    output_file=Path("data/scores/delantero_scores_2025_2026.csv")
+)
+```
+
+##### Cambiar temporada
+
+Para generar scores de otra temporada, cambiar el sufijo:
+
+```python
+generate_all_positions(
+    per90_csv=Path("data/per90/all_players_complete_2024_2025.csv"),
+    output_dir=Path("data/scores"),
+    season_suffix="2024_2025",  # Cambiar aquí
+)
+```
+
+#### Estructura de los Archivos Generados
+
+Cada archivo tiene exactamente **17 columnas**:
+
+```
+1. player_id
+2. player_name
+3. team_name
+4. matches
+5. minutes
+6. primary_position
+7. primary_position_share
+8-11. Score_* (4 categorías por posición)
+12. Score_Overall
+13-16. Flag_* (4 flags booleanos True/False)
+17. Flags (etiquetas descriptivas: "Killer | Presionante")
+```
+
+**Ejemplo de salida:**
+
+| player_name | Score_Finalizacion | Flag_Finalizacion | Flags |
+|-------------|-------------------|-------------------|-------|
+| Juan Pérez | 85.2 | True | Killer \| Presionante |
+| Carlos López | 72.5 | False | Balanceado |
+
+---
+
+### Notas Importantes
+
+⚠️ **NO usar directamente las clases scorer** (como `DelanteroScorer()`, `GoleroScorer()`, etc.), ya que estas generan DataFrames con **todas las columnas intermedias** (~600 columnas).
+
+✅ **Usar siempre:**
+- `core/generate_clean_scores.py` (recomendado)
+- `compute_scoring_from_df()` (manual)
+
+Los archivos deben seguir la nomenclatura `{posicion}_scores_{año_inicio}_{año_fin}.csv` para que los scripts de consolidación los puedan leer automáticamente.
+
+---
 
 ### Paso 2: Información consolidada de los scores (archivos {posicion}_scores_cost.csv).
 
